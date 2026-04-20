@@ -1,4 +1,5 @@
 import type { AbShareVariant } from '../utils/abVariant'
+import { getSupabasePublicEnv, joinSupabasePath } from '../utils/supabasePublic'
 
 const SHARE_SAVE_EVENT = 'share_save_click' as const
 
@@ -11,16 +12,14 @@ export type AbClickInsert = {
  * 通过 Supabase REST 以 anon 身份写入 `ab_clicks`（表 RLS 仅允许 INSERT）。
  */
 export async function insertAbClick({ deviceId, variant }: AbClickInsert): Promise<void> {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+  const supabase = getSupabasePublicEnv()
+  if (!supabase || !deviceId) return
 
-  if (!supabaseUrl || !supabaseAnonKey || !deviceId) return
-
-  const response = await fetch(`${supabaseUrl}/rest/v1/ab_clicks`, {
+  const response = await fetch(joinSupabasePath(supabase.baseUrl, '/rest/v1/ab_clicks'), {
     method: 'POST',
     headers: {
-      apikey: supabaseAnonKey,
-      Authorization: `Bearer ${supabaseAnonKey}`,
+      apikey: supabase.anonKey,
+      Authorization: `Bearer ${supabase.anonKey}`,
       'Content-Type': 'application/json',
       Prefer: 'return=minimal',
     },

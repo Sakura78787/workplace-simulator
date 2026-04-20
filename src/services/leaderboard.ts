@@ -1,3 +1,5 @@
+import { getSupabasePublicEnv, joinSupabasePath } from '../utils/supabasePublic'
+
 export type LeaderboardRow = {
   lb_rank: number
   anon_suffix: string
@@ -14,16 +16,14 @@ export type LeaderboardRow = {
  * 调用 `get_leaderboard_top20` RPC（anon 无表 SELECT，仅 EXECUTE）。
  */
 export async function fetchLeaderboardTop20(): Promise<LeaderboardRow[]> {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+  const supabase = getSupabasePublicEnv()
+  if (!supabase) return []
 
-  if (!supabaseUrl || !supabaseAnonKey) return []
-
-  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/get_leaderboard_top20`, {
+  const response = await fetch(joinSupabasePath(supabase.baseUrl, '/rest/v1/rpc/get_leaderboard_top20'), {
     method: 'POST',
     headers: {
-      apikey: supabaseAnonKey,
-      Authorization: `Bearer ${supabaseAnonKey}`,
+      apikey: supabase.anonKey,
+      Authorization: `Bearer ${supabase.anonKey}`,
       'Content-Type': 'application/json',
     },
     body: '{}',

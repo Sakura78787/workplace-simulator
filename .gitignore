@@ -22,3 +22,17 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# ======= 开源忽略名单 =======
+.env
+.env.*
+!.env.example
+memory-bank/
+PRD.md
+prd-quick-reference.md
+CALLING-OPENCODE-GO-API.md
+spec-supplement.md
+.cursorrules
+.cursor/
+.vercel
+.supabase

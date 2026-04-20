@@ -1,3 +1,5 @@
+import { getSupabasePublicEnv, joinSupabasePath } from '../utils/supabasePublic'
+
 export type PokedexSyncPayload = {
   deviceId: string
   resultType: 'dead' | 'cleared'
@@ -13,16 +15,14 @@ export type PokedexSyncPayload = {
  * 结算后静默上报极简元数据（不含 fatal_quote / 图片）；anon 仅 INSERT。
  */
 export async function insertPokedexSyncRow(payload: PokedexSyncPayload): Promise<void> {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+  const supabase = getSupabasePublicEnv()
+  if (!supabase || !payload.deviceId) return
 
-  if (!supabaseUrl || !supabaseAnonKey || !payload.deviceId) return
-
-  const response = await fetch(`${supabaseUrl}/rest/v1/pokedex_sync`, {
+  const response = await fetch(joinSupabasePath(supabase.baseUrl, '/rest/v1/pokedex_sync'), {
     method: 'POST',
     headers: {
-      apikey: supabaseAnonKey,
-      Authorization: `Bearer ${supabaseAnonKey}`,
+      apikey: supabase.anonKey,
+      Authorization: `Bearer ${supabase.anonKey}`,
       'Content-Type': 'application/json',
       Prefer: 'return=minimal',
     },

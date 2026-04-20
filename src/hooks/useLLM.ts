@@ -3,6 +3,7 @@ import { SPEC_FALLBACK_EFFECTS, SPEC_FALLBACK_MESSAGE } from '../config/specCopy
 import { defaultRole, getStoryNodesForRole } from '../config/storyNodes'
 import { runSafetyCheck } from '../services/safety'
 import { useGameStore } from '../store/gameStore'
+import { getSupabasePublicEnv, joinSupabasePath } from '../utils/supabasePublic'
 
 export type LlmVerdict = 'allow' | 'penalty' | 'block' | 'fallback'
 
@@ -36,14 +37,12 @@ const FALLBACK_RESPONSE: LlmResponse = {
   reasonCode: 'timeout_fallback',
 }
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
-
 /**
  * 调用 Supabase Edge Function 获取结构化 LLM 判定结果。
  */
 async function requestEdgeLLM(input: string, { signal }: SupabaseFunctionOptions): Promise<LlmResponse> {
-  if (!supabaseUrl || !supabaseAnonKey) {
+  const supabase = getSupabasePublicEnv()
+  if (!supabase) {
     return {
       ...FALLBACK_RESPONSE,
       reasonCode: 'supabase_not_configured',
@@ -55,12 +54,13 @@ async function requestEdgeLLM(input: string, { signal }: SupabaseFunctionOptions
   const roleNodes = getStoryNodesForRole(role)
   const currentNode = roleNodes[(state.currentRound - 1) % roleNodes.length]
 
-  const response = await fetch(`${supabaseUrl}/functions/v1/chat-completion`, {
+  const url = joinSupabasePath(supabase.baseUrl, '/functions/v1/chat-completion')
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      apikey: supabaseAnonKey,
-      Authorization: `Bearer ${supabaseAnonKey}`,
+      apikey: supabase.anonKey,
+      Authorization: `Bearer ${supabase.anonKey}`,
     },
     signal,
     body: JSON.stringify({
