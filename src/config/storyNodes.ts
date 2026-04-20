@@ -1,4 +1,4 @@
-import storyDataRaw from '../../memory-bank/game-data.json'
+import storyDataRaw from './game-data.json'
 
 export type EventEffects = {
   kpiDelta: number
