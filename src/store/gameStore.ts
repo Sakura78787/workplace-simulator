@@ -1,0 +1,281 @@
+import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
+import type { EventEffects } from '../config/storyNodes'
+import { clamp } from '../utils/clamp'
+
+export type RoleType = 'PM' | 'Ops'
+export type GameStatus = 'onboarding' | 'playing' | 'dead' | 'cleared'
+
+export type EventLogItem = {
+  role: 'npc' | 'player' | 'system'
+  content: string
+  at: number
+}
+
+export type RoundSnapshot = {
+  round: number
+  stats: {
+    kpi: number
+    shield: number
+    mental: number
+  }
+  eventLog: EventLogItem[]
+}
+
+export type GameResult = {
+  resultId: string
+  resultType: 'dead' | 'cleared'
+  finalStats: {
+    kpi: number
+    shield: number
+    mental: number
+  }
+  achievedTitle: string
+  fatalQuote?: string
+  heatPercentage: string
+  createdAt: number
+  isHiddenEnding?: boolean
+  hiddenEndingTag?: string
+  hiddenContext?: string
+}
+
+const initialState = {
+  status: 'onboarding' as GameStatus,
+  currentRound: 1 as 1 | 2 | 3 | 4 | 5,
+  stats: {
+    kpi: 50,
+    shield: 50,
+    mental: 50,
+  },
+  eventLog: [] as EventLogItem[],
+  reviveUsed: false,
+  lastRoundSnapshot: null as RoundSnapshot | null,
+  historyPokedex: [] as GameResult[],
+}
+
+type GameStoreState = {
+  status: GameStatus
+  currentRound: 1 | 2 | 3 | 4 | 5
+  stats: {
+    kpi: number
+    shield: number
+    mental: number
+  }
+  eventLog: EventLogItem[]
+  reviveUsed: boolean
+  lastRoundSnapshot: RoundSnapshot | null
+  historyPokedex: GameResult[]
+  isTyping: boolean
+  currentRole: RoleType | null
+  agreedDisclaimer: boolean
+  setRole: (role: RoleType) => void
+  setAgreedDisclaimer: (agreed: boolean) => void
+  startNewGame: () => void
+  resumeGame: () => void
+  saveRoundSnapshot: () => void
+  setTypingState: (isTyping: boolean) => void
+  applyDecision: (optionEffects: EventEffects) => void
+  submitDecision: (optionEffects: EventEffects) => void
+  nextRound: () => void
+  useRevive: () => void
+  appendEventLog: (eventItem: EventLogItem) => void
+  addGameResult: (result: Omit<GameResult, 'resultId' | 'createdAt'>) => void
+  resetForTest: () => void
+}
+
+export const useGameStore = create<GameStoreState>()(
+  persist(
+    (set) => ({
+      ...initialState,
+      isTyping: false,
+      currentRole: null,
+      agreedDisclaimer: false,
+      setRole: (role) =>
+        set({
+          currentRole: role,
+        }),
+      setAgreedDisclaimer: (agreed) =>
+        set({
+          agreedDisclaimer: agreed,
+        }),
+      startNewGame: () =>
+        set((state) => ({
+          ...initialState,
+          isTyping: false,
+          currentRole: state.currentRole,
+          agreedDisclaimer: state.agreedDisclaimer,
+          historyPokedex: state.historyPokedex,
+          status: 'playing',
+        })),
+      resumeGame: () =>
+        set({
+          isTyping: false,
+        }),
+      saveRoundSnapshot: () =>
+        set((state) => ({
+          lastRoundSnapshot: {
+            round: state.currentRound,
+            stats: { ...state.stats },
+            eventLog: [...state.eventLog],
+          },
+        })),
+      setTypingState: (isTyping) =>
+        set({
+          isTyping,
+        }),
+      applyDecision: (optionEffects) =>
+        set((state) => {
+          const nextStats = {
+            kpi: clamp(state.stats.kpi + optionEffects.kpiDelta, 0, 100),
+            shield: clamp(state.stats.shield + optionEffects.shieldDelta, 0, 100),
+            mental: clamp(state.stats.mental + optionEffects.mentalDelta, 0, 100),
+          }
+
+          const isDead = nextStats.kpi <= 0 || nextStats.shield <= 0 || nextStats.mental <= 0
+          const nextStatus: GameStatus = isDead ? 'dead' : state.status === 'onboarding' ? 'playing' : state.status
+
+          return {
+            stats: nextStats,
+            status: nextStatus,
+            isTyping: false,
+            eventLog: [
+              ...state.eventLog,
+              {
+                role: 'system',
+                content: `本轮结算：KPI ${optionEffects.kpiDelta}，护盾 ${optionEffects.shieldDelta}，精神 ${optionEffects.mentalDelta}`,
+                at: Date.now(),
+              },
+            ],
+          }
+        }),
+      submitDecision: (optionEffects) =>
+        set((state) => {
+          const snapshot: RoundSnapshot = {
+            round: state.currentRound,
+            stats: { ...state.stats },
+            eventLog: [...state.eventLog],
+          }
+
+          const nextStats = {
+            kpi: clamp(state.stats.kpi + optionEffects.kpiDelta, 0, 100),
+            shield: clamp(state.stats.shield + optionEffects.shieldDelta, 0, 100),
+            mental: clamp(state.stats.mental + optionEffects.mentalDelta, 0, 100),
+          }
+
+          const isDead = nextStats.kpi <= 0 || nextStats.shield <= 0 || nextStats.mental <= 0
+          if (isDead) {
+            return {
+              lastRoundSnapshot: snapshot,
+              stats: nextStats,
+              status: 'dead' as GameStatus,
+              isTyping: false,
+              eventLog: [
+                ...state.eventLog,
+                {
+                  role: 'system',
+                  content: `本轮结算：KPI ${optionEffects.kpiDelta}，护盾 ${optionEffects.shieldDelta}，精神 ${optionEffects.mentalDelta}`,
+                  at: Date.now(),
+                },
+              ],
+            }
+          }
+
+          const isFinalRound = state.currentRound >= 5
+          return {
+            lastRoundSnapshot: snapshot,
+            stats: nextStats,
+            currentRound: isFinalRound ? state.currentRound : ((state.currentRound + 1) as 1 | 2 | 3 | 4 | 5),
+            status: isFinalRound ? ('cleared' as GameStatus) : ('playing' as GameStatus),
+            isTyping: false,
+            eventLog: [
+              ...state.eventLog,
+              {
+                role: 'system',
+                content: `本轮结算：KPI ${optionEffects.kpiDelta}，护盾 ${optionEffects.shieldDelta}，精神 ${optionEffects.mentalDelta}`,
+                at: Date.now(),
+              },
+            ],
+          }
+        }),
+      nextRound: () =>
+        set((state) => {
+          if (state.status === 'dead' || state.status === 'cleared') {
+            return {}
+          }
+
+          if (state.currentRound >= 5) {
+            return {
+              status: 'cleared' as GameStatus,
+              isTyping: false,
+            }
+          }
+
+          return {
+            currentRound: (state.currentRound + 1) as 1 | 2 | 3 | 4 | 5,
+            status: 'playing' as GameStatus,
+            isTyping: false,
+          }
+        }),
+      useRevive: () =>
+        set((state) => {
+          if (state.reviveUsed || !state.lastRoundSnapshot) {
+            return {}
+          }
+
+          return {
+            status: 'playing' as GameStatus,
+            currentRound: state.lastRoundSnapshot.round as 1 | 2 | 3 | 4 | 5,
+            stats: {
+              ...state.lastRoundSnapshot.stats,
+            },
+            eventLog: [...state.lastRoundSnapshot.eventLog],
+            reviveUsed: true,
+            isTyping: false,
+          }
+        }),
+      appendEventLog: (eventItem) =>
+        set((state) => ({
+          eventLog: [...state.eventLog, eventItem],
+        })),
+      addGameResult: (result) =>
+        set((state) => ({
+          historyPokedex: [
+            ...state.historyPokedex,
+            {
+              ...result,
+              resultId: crypto.randomUUID(),
+              createdAt: Date.now(),
+            },
+          ],
+        })),
+      resetForTest: () =>
+        set((state) => ({
+          ...initialState,
+          isTyping: false,
+          currentRole: state.currentRole,
+          agreedDisclaimer: state.agreedDisclaimer,
+          historyPokedex: state.historyPokedex,
+        })),
+    }),
+    {
+      name: 'opencode-game-storage',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        status: state.status,
+        currentRound: state.currentRound,
+        stats: state.stats,
+        eventLog: state.eventLog,
+        reviveUsed: state.reviveUsed,
+        lastRoundSnapshot: state.lastRoundSnapshot,
+        historyPokedex: state.historyPokedex,
+        currentRole: state.currentRole,
+        agreedDisclaimer: state.agreedDisclaimer,
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.isTyping = false
+        }
+      },
+    }
+  )
+)

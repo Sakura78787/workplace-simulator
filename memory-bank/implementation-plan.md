@@ -1,39 +1,3 @@
-# 实施执行计划 (Implementation Plan)
-
-> **Architect 箴言**：摒弃散漫，精准打击。所有样式必须参考 Design 规范，所有数值拦截必须遵守 Tech Stack 约定。**先建底座，再铺主轴，最后接AI。**
-
-## Phase 1: 基础设施与 UI 资产 (Base & Tokens)
-- [ ] **初始化工程**：Vite React + TS 模板初始化。
-- [ ] **依赖安装**：`tailwindcss`, `framer-motion`, `zustand`, `lucide-react`, `html2canvas`, `recharts`, `qrcode.react`, `react-router-dom`。
-- [ ] **注入原子级资产**：配置 `tailwind.config.js` 的主题色变体（cream/mint/babyblue/sunset/critical等）。
-- [ ] **导入开源字体**：加载 `Smiley Sans` 和 `Noto Sans SC`，按设计规约在 CSS 中设置层级基石。
-- [ ] **搭建路由与应用壳**：锁定 `max-w-[414px]` 居中布局，实现 HashRouter (Landing / Survival / Result) 及防拉伸机制。
-
-## Phase 2: 中央卡片游戏心智核心 (Core Engine)
-- [ ] **搭建全局共享组件**：`CapsuleButton` (带弹簧动效), `Toast` (轻量上浮动效), 潜入式有机漂浮背景 `BlobBackground`。
-- [ ] **Survival 布局架设**：顶部固钉 `StatusBar`，底部吸底 `FreeInput`，中间 `StoryCard` 弹性绝对居中。
-- [ ] **全局共享逻辑与静态底座**：创建 `game-data.md` 中对应的 PM / Ops 静态五回合剧情数据与映射表，并在本地定义 `storyNodes.ts`。
-- [ ] **核心状态机 (Zustand Store)**：构建数值面板 [0-100] clamp 截断逻辑，管理 `currentRound`，`reviveUsed` 以及复活快照 `lastRoundSnapshot`。
-- [ ] **挂载预设节点骨架**：接入 PM / Ops 静态五回合剧情数据，确保每个选项效果清晰绑定至 Store Action。
-- [ ] **打字机交互锁**：NPC 文本实现逐字流式渲染（附带落日橘光标），渲染期间强制禁用所有决策区域输入（防连击防穿透）。
-
-## Phase 3: Framer Motion 高阶微交互 (Micro-Interactions)
-- [ ] **StoryCard 手势拖拽**：调用 `useDrag` 识别 `x` / `y`，锁定 `y` 轴拖拽。
-- [ ] **偏航系数方程**：完成卡片微转偏航角度映射 `x * 8 / 340` (控制最大 ±8°)，两侧 QuickChip 实现视差高亮。
-- [ ] **滑选决策死区与提交**：实现 60px 阈值死区：若 `x > 60`，向右发射卡片并派发选 项3 逻辑；若 `< -60`，向左发射卡片并派发选项 1 逻辑。松手不满阈值触发强弹簧回正（stiffness: 300）。
-- [ ] **红色刺痛闪爆**：监测全剧本单项骤降的 Delta (>20)，注入激发现象的 3 次 `outline` 危急闪烁。
-
-## Phase 4: AI 双重防御链路 (LLM & Security)
-- [ ] **封装 `useLLM` Hook**：在自由输入区实装请求拦截、loading 轮播、接口返回的数据解构。
-- [ ] **前端双拦截机制 (Layer 1)**：在提交请求前校验超长字符，使用正则表阻断"我是AI/忽略协议"等典型 Prompt Injection。
-- [ ] **全栈流控降级 (Timeout Tiers)**：自由输入 3秒后切换逗比轮播提示，5秒超时直接 `AbortController` 切断，派发 Fallback 惩罚剧情（绝不白屏）。
-- [ ] **Supabase Edge Function (Layer 2)**：基于 `game-data.md` 里的 System Prompt 构建后台 Deno 代理，强制校验大模型的数值 `[-25, +25]`。
-
-## Phase 5: 终局结算与容灾收尾 (Endgame & Resume)
-- [ ] **海报大图离屏渲染**：组建 `ReceiptPoster` 小票DOM树，配置 Recharts 三维雷达图和 QRCode 分享码。实现 `useCORS: true` 与 `document.fonts.ready` 等离屏截图硬指标。
-- [ ] **结算分发器 (Titles Engine)**：按结局特质匹配最终恶搞称号，组装致命回答并计算嘲讽指数 Heat Percentage。
-- [ ] **灾备恢复机制 (LocalStorage Pokedex)**：绑定 `visibilitychange` 和 `pagehide` 事件向本地吐存游玩快照。实现首页"继续收拾烂摊子"弹窗断点恢复。
-- [ ] **Android MVP 全链路检验**：跨域图片污染测试、极端输入测试、微信 X5 / Chrome 真实触控手感验收。
 # 实施计划 (Implementation Plan) - 沉浸式岗位试跑模拟器
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -41,31 +5,33 @@
 
 **Goal:** 在 MVP 范围内打通"选角 -> 5 回合生存决策 -> 死亡/通关 -> 海报导出 -> 本地图鉴"的完整闭环，并满足安卓优先验收。
 
-**Architecture:** React + Tailwind + Framer Motion 承载交互与视觉；Zustand + LocalStorage 管理状态与续玩；Supabase Edge Function 作为 Opencode(qwen-3.5-plus) 代理与双层过滤入口。路由采用 react-router-dom v6 Hash Router。
+**Architecture:** React + Tailwind + Framer Motion 承载交互与视觉；Zustand + LocalStorage 管理状态与续玩；Supabase Edge Function 作为 Opencode(qwen3.5-plus) 代理与双层过滤入口。路由采用 react-router-dom v6 Hash Router。
 
 **Tech Stack:** React, Tailwind CSS, Vite, Zustand, framer-motion, html2canvas, recharts, qrcode.react, react-router-dom, lucide-react
 
-**补充规约：** 所有实施必须同时遵循本文件、《游戏核心资产与配置数据》(game-data.md) 与《架构与交互设计文档》(design-document.md) 中的详细参数与数据。
+**补充规约：** 所有实施必须遵循文档优先顺序：PRD -> design-document.md -> tech-stack.md -> implementation-plan.md。若存在冲突，以前序文档为准；规格参数统一以《规格补充文档》为准。
 
 ---
 
 ## 阶段一：视觉骨架与基础约束
 
 ### Task 1: 初始化与主题令牌
-- [ ] **Step 1: 初始化项目与依赖**
+**来源：** PRD §3(P0-2)、PRD §6.2、design-document §0/§1、规格补充文档 §3/§4/§5
+- [✔] **Step 1: 初始化项目与依赖**
   执行 Vite React TS 初始化，安装 `tailwindcss`, `postcss`, `autoprefixer`, `framer-motion`, `zustand`, `html2canvas`, `recharts`, `qrcode.react`, `react-router-dom`, `lucide-react`。
-- [ ] **Step 2: 注入颜色与字体令牌**
+- [✔] **Step 2: 注入颜色与字体令牌**
   在 Tailwind 中配置 `cream/mint/babyblue/sunset/critical/text-primary/text-secondary/card-bg` 等色值（详见《规格补充文档》§4.1），并接入开源字体 `Smiley Sans`（标题）与 `Noto Sans SC`（正文）。字体层级见《规格补充文档》§5。
-- [ ] **Step 3: 锁定移动壳布局与路由**
+- [✔] **Step 3: 锁定移动壳布局与路由**
   根容器强制 `max-w-[414px]` + `h-[100dvh]` + 居中。配置 Hash Router：`/` Landing, `/survival` Survival, `/result` Result。转场动画规格见《规格补充文档》§3。
 - **测试方法**：桌面全屏时内容仍居中手机壳，视觉不扩成企业官网布局。路由切换可跳转。
 
 ### Task 2: 全局视觉组件
-- [ ] **Step 1: BlobBackground**
+**来源：** PRD §3(P0-2)、design-document §0/§1、规格补充文档 §4/§9
+- [x] **Step 1: BlobBackground**
   实现 2-3 个有机光晕，长周期漂浮（非线性）。
-- [ ] **Step 2: CapsuleButton 组件化**
+- [x] **Step 2: CapsuleButton 组件化**
   提供 `default/warning/disabled` 变体，统一按压 spring 反馈。详细参数见《规格补充文档》§4.2。
-- [ ] **Step 3: Toast 组件化**
+- [x] **Step 3: Toast 组件化**
   支持 `info/warn/error` 三种语义，用于续玩、违规、断网提示。文案见《规格补充文档》§9。
 - **测试方法**：按钮和气泡按压手感一致，背景与提示不抢主线阅读。
 
@@ -74,45 +40,50 @@
 ## 阶段二：核心玩法主链路
 
 ### Task 3: LandingView 与选角入局
-- [ ] **Step 1: 实现免责声明强制勾选**
+**来源：** PRD §3(P0-1)、PRD §4(Onboarding)、PRD §7(验收2)
+- [x] **Step 1: 实现免责声明强制勾选**
   未勾选时主 CTA 禁用。文案见《规格补充文档》§9.5。
-- [ ] **Step 2: 实现 PM/Ops 选角卡片**
+- [x] **Step 2: 实现 PM/Ops 选角卡片**
   卡片风格统一，选中态清晰。
-- [ ] **Step 3: 入局状态写入 Store**
+- [x] **Step 3: 入局状态写入 Store**
   写入角色、回合初始值和新局标识。
 - **测试方法**：未勾选无法开局；勾选后可进入生存页。
 
 ### Task 4: 剧本骨架与状态机
-- [ ] **Step 1: 建立 `storyNodes.json`**
-  配置 PM 和 Ops 各 5 个节点（热身/甩锅/插单/死线/背锅），每节点固定 3 个选项及效果值。完整数据见《规格补充文档》§6。
-- [ ] **Step 2: 建立 `gameStore.ts` 核心状态**
+**来源：** PRD §3(P0-3/P0-4)、PRD §4(决策循环)、规格补充文档 §6/§13
+- [x] **Step 1: 建立 `storyNodes.json`**
+  配置 PM 和 Ops 各 5 个节点（热身/甩锅/插单/死线/背锅），每节点固定 3 个选项及效果值。完整数据以结构化真源（game-data.json）与《规格补充文档》一致为准。
+- [x] **Step 2: 建立 `gameStore.ts` 核心状态**
   包含 `currentRound`、三维数值（初始50）、`eventLog`、`reviveUsed`、`lastRoundSnapshot`（每回合选择前保存）。数值边界 clamp [0, 100]。
-- [ ] **Step 3: 实现回合推进与结算**
+- [x] **Step 3: 实现回合推进与结算**
   每次决策都推进"选择 -> 数值变化(clamp) -> 死活判定 -> 下一轮/结算"。死亡判定流程见《规格补充文档》§13.2。
 - **测试方法**：可稳定跑完 5 回合；任一维度 <=0 立即触发死局。
 
 ### Task 5: SurvivalView 交互区
-- [ ] **Step 1: StatusBar + 红框暴跌警报**
+**来源：** PRD §3(P0-2)、PRD §7(验收5/8)、design-document §1.3/§3
+- [x] **Step 1: StatusBar + 红框暴跌警报**
   三条并列胶囊进度条，单次跌幅 >20 触发短促红框快闪(120ms×3)。
-- [ ] **Step 2: StoryCard 拖拽与滑选**
+- [x] **Step 2: StoryCard 拖拽与滑选**
   实现 StoryCard 的拖拽交互：轻拖(< 60px)为视觉反馈(偏转+旋转)；拖过阈值(≥ 60px)触发滑选确认：左滑→Chip1，右滑→Chip3。松手未达阈值spring回弹。卡片旋转 = `dx * 8 / cardWidth`(最大±8°)。完整规格见《规格补充文档》§2。
-- [ ] **Step 3: DecisionArea 输入机制**
+- [x] **Step 3: DecisionArea 输入机制**
   2-3 个 QuickChips；短按发送，长按(400ms)填入输入框；输入框聚焦时 Chips 以 opacity+translateY 渐隐。
 - **测试方法**：可滑可点且不退化为纯聊天框；滑选阈值响应正确。
 
 ### Task 6: NPC 打字机与交互锁
-- [ ] **Step 1: `NPCMessage` 逐字输出**
+**来源：** PRD §3(P0-2)、design-document §1.3/§3.4
+- [x] **Step 1: `NPCMessage` 逐字输出**
   每秒约 15-20 字节奏，光标为 2px 落日橘闪烁竖线。
-- [ ] **Step 2: 打字期间锁定决策区**
+- [x] **Step 2: 打字期间锁定决策区**
   `isTyping=true` 时禁用输入和快捷项。
 - **测试方法**：打字结束前用户无法插入新决策。
 
 ### Task 7: 复活机制完整分支
-- [ ] **Step 1: 实现首次死局弹窗**
+**来源：** PRD §3(P0-4)、PRD §4(死亡判定)、PRD §7(验收6)
+- [x] **Step 1: 实现首次死局弹窗**
   显示"使用复活"与"放弃复活直接结算"。文案见《规格补充文档》§9.6。
-- [ ] **Step 2: 使用复活逻辑**
+- [x] **Step 2: 使用复活逻辑**
   从 `lastRoundSnapshot` 回滚到本回合选择前状态，并标记 `reviveUsed=true`。保留 eventLog 不删除。
-- [ ] **Step 3: 放弃复活逻辑**
+- [x] **Step 3: 放弃复活逻辑**
   直接进入死亡结算，不回滚。
 - **测试方法**：两条分支均稳定，无回合错乱或重复复活。
 
@@ -121,24 +92,26 @@
 ## 阶段三：LLM 接入、安全与降级
 
 ### Task 8: 前端 LLM 调用层（OpenCode）
-- [ ] **Step 1: 建立 `useLLM.ts` 与请求封装**
+**来源：** PRD §3(P0-6)、PRD §6.1/§6.3、规格补充文档 §7/§9/§11
+- [x] **Step 1: 建立 `useLLM.ts` 与请求封装**
   约定统一返回结构：`reply + effects + verdict + reasonCode`。请求体格式见《规格补充文档》§7.2。
-- [ ] **Step 2: 3 秒提示 + 5 秒硬切**
+- [x] **Step 2: 3 秒提示 + 5 秒硬切**
   超过 3 秒显示趣味文案（文案池见《规格补充文档》§9.1）；到 5 秒直接切固定不可用提示并走本地兜底。
-- [ ] **Step 3: 成功慢响应与失败响应分离**
+- [x] **Step 3: 成功慢响应与失败响应分离**
   成功但慢：继续趣味等待；失败/超时：固定不可用提示（见《规格补充文档》§9.2）。
-- [ ] **Step 4: 前端第一层规则过滤**
+- [x] **Step 4: 前端第一层规则过滤**
   实现 length、injection、block 三类正则拦截（规则列表见《规格补充文档》§11.1）。命中时前端直接返回 block，不发请求。
 - **测试方法**：模拟慢接口与失败接口，UI 分支正确且不白屏。
 
 ### Task 9: Supabase Edge Function 双层过滤
-- [ ] **Step 1: 创建 `chat-completion` 函数**
-  接入 Opencode API，模型固定 `qwen-3.5-plus`。System Prompt 模板见《规格补充文档》§7.3。
-- [ ] **Step 2: 第一层规则过滤（Edge Function 端）**
+**来源：** PRD §3(P0-6)、PRD §6.3、tech-stack §3.2
+- [x] **Step 1: 创建 `chat-completion` 函数**
+  接入 Opencode API，模型固定 `qwen3.5-plus`。System Prompt 模板见《规格补充文档》§7.3。
+- [x] **Step 2: 第一层规则过滤（Edge Function 端）**
   拦截 Prompt Injection、明显违规输入、异常长度输入（与前端双重保障）。
-- [ ] **Step 3: 第二层语义审查**
+- [x] **Step 3: 第二层语义审查**
   对模型输出做 allow/penalty/block 结构化判定，命中风险时输出安全文案与惩罚值。校验函数见《规格补充文档》§11.2。
-- [ ] **Step 4: 失败兜底**
+- [x] **Step 4: 失败兜底**
   API 错误或超时时统一返回本地可消费的 fallback 结构（见《规格补充文档》§7.6）。
 - **测试方法**：注入越权提示词、辱骂词、正常文本，三类返回符合预期。
 
@@ -147,20 +120,22 @@
 ## 阶段四：结算传播与存档
 
 ### Task 10: ResultView 与海报导出
-- [ ] **Step 1: 小票风版式**
+**来源：** PRD §3(P0-5)、PRD §4(Result)、PRD §7(验收4)
+- [x] **Step 1: 小票风版式**
   包含称号、雷达图(recharts)、致命金句、热力百分比。版式参数见《规格补充文档》§4.7。
-- [ ] **Step 2: 二维码接入**
+- [x] **Step 2: 二维码接入**
   使用 `qrcode.react` 的 `<QRCodeSVG>`，尺寸 80×80，内容为 deployHomeUrl。
-- [ ] **Step 3: html2canvas 导出**
+- [x] **Step 3: html2canvas 导出**
   离屏 720×1280 渲染，处理 SVG 转 canvas，确保 Android 端长按保存稳定。完整规格见《规格补充文档》§12。
 - **测试方法**：Android 端可稳定生成并保存海报，二维码可扫码打开首页。
 
 ### Task 11: 本地续玩与图鉴策略
-- [ ] **Step 1: 续玩缓存**
+**来源：** PRD §3(P0-5)、PRD §4(缓存分支)、PRD §7(验收2)
+- [x] **Step 1: 续玩缓存**
   `visibilitychange` + `pagehide` 时持久化进行中会话。微信 X5 兼容见《规格补充文档》§10.4。
-- [ ] **Step 2: 图鉴存储最小化**
-  仅存 `GameResult` 元数据，不长期存整图 base64。
-- [ ] **Step 3: 图鉴展示**
+- [x] **Step 2: 图鉴存储最小化**
+  仅存 `GameResult` 元数据，不长期存整图 base64。若触发隐藏结局，元数据必须包含隐藏结局标签与触发语境摘要。
+- [x] **Step 3: 图鉴展示**
   支持查看历史死亡/通关记录，按需重生成海报。
 - **测试方法**：强退后可续玩；多局记录不爆 LocalStorage。
 
@@ -169,6 +144,7 @@
 ## 阶段五：安卓优先验收
 
 ### Task 12: MVP 终验清单（Android）
+**来源：** PRD §7(全部验收项)、PRD §6.2、design-document §5
 - [ ] **Step 1: 主链路回归**
   开局 -> 5 回合(Chip点击 + 滑卡选择 + 自由输入) -> 死亡/通关 -> 海报导出 -> 重开局。
 - [ ] **Step 2: 异常回归**
