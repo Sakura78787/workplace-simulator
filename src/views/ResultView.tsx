@@ -68,7 +68,7 @@ function ReceiptPoster({ summary, stats, qrTarget, compact = false }: ReceiptPos
   return (
     <article
       className={[
-        'rounded-3xl border border-white/60 bg-white/90 shadow-[0_20px_48px_rgba(45,45,45,0.14)]',
+        'rounded-3xl border border-white/60 bg-white/90 shadow-[0_20px_48px_rgba(45,45,45,0.14)] [-webkit-touch-callout:default]',
         compact ? 'p-6' : 'p-8',
       ].join(' ')}
     >
@@ -153,7 +153,8 @@ export function ResultView() {
         height: 1280,
         scale: 2,
         useCORS: true,
-        foreignObjectRendering: true,
+        /** Android 微信 X5：foreignObject 易白屏，优先位图合成路径。 */
+        foreignObjectRendering: false,
       })
       const imageUrl = canvas.toDataURL('image/png', 1)
       const link = document.createElement('a')
@@ -168,7 +169,10 @@ export function ResultView() {
   }
 
   return (
-    <section className="relative flex h-full flex-col overflow-y-auto px-5 pb-8 pt-6">
+    <section
+      className="relative flex h-full flex-col overflow-y-auto px-5 pt-6"
+      style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom, 0px))' }}
+    >
       <div className="mx-auto w-full max-w-[360px]">
         <ReceiptPoster summary={summary} stats={stats} qrTarget={deployHomeUrl} compact />
       </div>

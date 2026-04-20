@@ -34,12 +34,32 @@ function App() {
     }
   }, [])
 
+  /** Android 微信 X5：用 visualViewport 高度对齐可视区，减轻键盘/底栏遮挡。 */
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+
+    const syncViewportHeight = () => {
+      document.documentElement.style.setProperty('--app-vvh', `${vv.height}px`)
+    }
+
+    vv.addEventListener('resize', syncViewportHeight)
+    vv.addEventListener('scroll', syncViewportHeight)
+    syncViewportHeight()
+
+    return () => {
+      vv.removeEventListener('resize', syncViewportHeight)
+      vv.removeEventListener('scroll', syncViewportHeight)
+      document.documentElement.style.removeProperty('--app-vvh')
+    }
+  }, [])
+
   return (
     <div className="relative min-h-[100dvh] overflow-hidden bg-cream px-4 py-0">
       <BlobBackground />
       <Meteors />
       <ToastViewport />
-      <main className="relative z-10 mx-auto h-[100dvh] w-full max-w-[414px] overflow-x-hidden rounded-[32px] border border-white/45 bg-white/50 text-text-primary shadow-[0_24px_56px_rgba(45,45,45,0.16)] backdrop-blur-xl">
+      <main className="relative z-10 mx-auto box-border h-[var(--app-vvh,100dvh)] max-h-[var(--app-vvh,100dvh)] w-full max-w-[414px] overflow-x-hidden rounded-[32px] border border-white/45 bg-white/50 pb-[max(0px,env(safe-area-inset-bottom,0px))] text-text-primary shadow-[0_24px_56px_rgba(45,45,45,0.16)] backdrop-blur-xl">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
