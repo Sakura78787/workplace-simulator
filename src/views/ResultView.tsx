@@ -4,21 +4,39 @@ import { useNavigate } from 'react-router-dom'
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer } from 'recharts'
 import { QRCodeSVG } from 'qrcode.react'
 import { CapsuleButton } from '../components/common/CapsuleButton'
+import {
+  SPEC_SHARE_SAVE_CTA_PK_TAUNT,
+  SPEC_SHARE_SAVE_CTA_SELF_MOCK,
+} from '../config/specCopy'
+import { insertAbClick } from '../services/abClicks'
+import { insertPokedexSyncRow } from '../services/pokedexSync'
 import { useGameStore } from '../store/gameStore'
+import { resolveAbShareVariant } from '../utils/abVariant'
 
 type ResultSummary = {
   resultType: 'dead' | 'cleared'
   achievedTitle: string
   fatalQuote: string
   heatPercentage: string
+  hiddenEndingTag?: 'active_resign_flow' | 'full_slack_flow'
+  hiddenContext?: string
 }
 
+/** Task 17：裂变仅引流首页，不透传任何结局或 snapshot 参数。 */
 const deployHomeUrl = `${window.location.origin}${window.location.pathname}#/`
 
 /**
  * 按规格补充文档的称号基线映射结算头衔与致命金句。
  */
-function buildResultSummary(status: 'dead' | 'cleared', stats: { kpi: number; shield: number; mental: number }, fatalQuote: string): ResultSummary {
+function buildResultSummary(
+  status: 'dead' | 'cleared',
+  stats: { kpi: number; shield: number; mental: number },
+  fatalQuote: string,
+  hiddenEndingMeta?: {
+    hiddenEndingTag?: 'active_resign_flow' | 'full_slack_flow'
+    hiddenContext?: string
+  },
+): ResultSummary {
   let achievedTitle = '普通打工人'
 
   if (status === 'dead') {
@@ -44,6 +62,8 @@ function buildResultSummary(status: 'dead' | 'cleared', stats: { kpi: number; sh
     achievedTitle,
     fatalQuote,
     heatPercentage: `${heatValue}%`,
+    hiddenEndingTag: hiddenEndingMeta?.hiddenEndingTag,
+    hiddenContext: hiddenEndingMeta?.hiddenContext,
   }
 }
 
@@ -85,6 +105,16 @@ function ReceiptPoster({ summary, stats, qrTarget, compact = false }: ReceiptPos
         <p className="mt-2 text-sm leading-relaxed text-text-primary">{summary.fatalQuote}</p>
       </div>
 
+      {summary.hiddenEndingTag ? (
+        <div className="mt-3 rounded-2xl border border-critical/30 bg-critical/5 p-3">
+          <p className="text-xs text-text-secondary">隐藏结局</p>
+          <p className="mt-1 text-sm font-semibold text-critical">
+            {summary.hiddenEndingTag === 'active_resign_flow' ? '主动离职流' : '彻底摆烂流'}
+          </p>
+          {summary.hiddenContext ? <p className="mt-1 text-xs text-text-secondary">{summary.hiddenContext}</p> : null}
+        </div>
+      ) : null}
+
       <div className="mt-6 flex items-end justify-between gap-4">
         <div className="h-[200px] w-[200px] rounded-2xl bg-white/70 p-2">
           <ResponsiveContainer width="100%" height="100%">
@@ -111,10 +141,24 @@ export function ResultView() {
   const stats = useGameStore((state) => state.stats)
   const eventLog = useGameStore((state) => state.eventLog)
   const currentRole = useGameStore((state) => state.currentRole)
+  const deviceId = useGameStore((state) => state.deviceId)
+  const pendingHiddenEnding = useGameStore((state) => state.pendingHiddenEnding)
+  const ensureDeviceId = useGameStore((state) => state.ensureDeviceId)
   const addGameResult = useGameStore((state) => state.addGameResult)
+  const currentRound = useGameStore((state) => state.currentRound)
   const [isExporting, setIsExporting] = useState(false)
   const exportPosterRef = useRef<HTMLDivElement | null>(null)
   const hasSavedRef = useRef(false)
+  const lastAbClickAtRef = useRef(0)
+
+  useEffect(() => {
+    ensureDeviceId()
+  }, [ensureDeviceId])
+
+  const shareSaveCtaLabel = useMemo(() => {
+    const variant = resolveAbShareVariant(deviceId)
+    return variant === 'self_mock' ? SPEC_SHARE_SAVE_CTA_SELF_MOCK : SPEC_SHARE_SAVE_CTA_PK_TAUNT
+  }, [deviceId])
 
   const fatalQuote = useMemo(() => {
     const latestNpc = [...eventLog].reverse().find((item) => item.role === 'npc')?.content
@@ -123,7 +167,10 @@ export function ResultView() {
   }, [eventLog])
 
   const normalizedStatus = status === 'dead' ? 'dead' : 'cleared'
-  const summary = useMemo(() => buildResultSummary(normalizedStatus, stats, fatalQuote), [normalizedStatus, stats, fatalQuote])
+  const summary = useMemo(
+    () => buildResultSummary(normalizedStatus, stats, fatalQuote, pendingHiddenEnding ?? undefined),
+    [normalizedStatus, stats, fatalQuote, pendingHiddenEnding],
+  )
 
   useEffect(() => {
     if (!hasSavedRef.current) {
@@ -135,15 +182,47 @@ export function ResultView() {
         achievedTitle: summary.achievedTitle,
         fatalQuote: summary.fatalQuote,
         heatPercentage: summary.heatPercentage,
+        isHiddenEnding: Boolean(summary.hiddenEndingTag),
+        hiddenEndingTag: summary.hiddenEndingTag,
+        hiddenContext: summary.hiddenContext,
       })
+
+      const id = useGameStore.getState().deviceId
+      if (id) {
+        void insertPokedexSyncRow({
+          deviceId: id,
+          resultType: summary.resultType,
+          achievedTitle: summary.achievedTitle,
+          heatPercentage: summary.heatPercentage,
+          kpi: stats.kpi,
+          shield: stats.shield,
+          mental: stats.mental,
+          roundsSurvived: currentRound,
+        })
+      }
     }
-  }, [summary, stats, addGameResult])
+  }, [summary, stats, addGameResult, currentRound])
+
+  /**
+   * 记录分享/保存按钮点击（~1s 防抖；每次有效点击各写一行 INSERT）。
+   */
+  const tryLogShareSaveClick = () => {
+    const now = Date.now()
+    if (now - lastAbClickAtRef.current < 1000) return
+    lastAbClickAtRef.current = now
+    const id = useGameStore.getState().deviceId
+    if (!id) return
+    const variant = resolveAbShareVariant(id)
+    void insertAbClick({ deviceId: id, variant })
+  }
 
   /**
    * 以 720x1280 离屏节点渲染海报并触发下载。
    */
   const handleSaveResult = async () => {
     if (!exportPosterRef.current) return
+
+    tryLogShareSaveClick()
 
     setIsExporting(true)
     try {
@@ -179,7 +258,7 @@ export function ResultView() {
 
       <div className="mt-6 grid gap-3">
         <CapsuleButton onClick={handleSaveResult} disabled={isExporting}>
-          {isExporting ? '正在生成海报...' : '保存结局'}
+          {isExporting ? '正在生成海报...' : shareSaveCtaLabel}
         </CapsuleButton>
         <CapsuleButton variant="warning" onClick={() => navigate('/')}>
           重新入职（{currentRole ?? '待选岗'}）

@@ -1,8 +1,18 @@
 # 游戏核心资产与配置数据 (Game Data & Prompts)
 
-> **致执行 AI 的最高指令**：这里是沉浸式模拟器的所有静态数据、常量映射与大模型 Prompt。在开发 `storyNodes.ts`、`titles.ts` 和 Edge Function 时，**必须逐字逐句硬编码复制本文件中的数据**，禁止任何形式的自我发挥或幻觉生成！
+> **说明层定位**：本文件用于人类阅读与评审。程序侧真源文件如下：
+> 1) 结构化数据真源：memory-bank/game-data.json
+> 2) Prompt 真源：supabase/functions/chat-completion/prompts/system-prompt.txt
+> 3) 规则阈值真源：memory-bank/spec-supplement.md
+>
+> 开发与执行以真源文件为准，本文件不得与真源冲突。
 
-## 1. 核心系统指令 (System Prompt for qwen-3.5-plus)
+## 0. 真源映射
+- Story Nodes、称号规则、隐藏结局、热力权重：见 game-data.json
+- LLM System Prompt：见 supabase/functions/chat-completion/prompts/system-prompt.txt
+- 双层过滤阈值、交互阈值、海报规格：见 spec-supplement.md
+
+## 1. 核心系统指令 (System Prompt for qwen3.5-plus)
 在 Supabase Edge Function 中调用 LLM 时，必须使用以下 System Prompt（替换双大括号中的变量）：
 
 ```text

@@ -6,8 +6,12 @@ import { DecisionArea } from '../components/game/DecisionArea'
 import { ReviveModal } from '../components/game/ReviveModal'
 import { StatusBar } from '../components/game/StatusBar'
 import { StoryCard } from '../components/game/StoryCard'
-import { SPEC_SLOW_LOADING_HINTS } from '../config/specCopy'
-import { storyNodesMock, type StoryOption } from '../config/storyNodes'
+import {
+  SPEC_SLOW_LOADING_HINTS,
+  SPEC_STATUS_CLEARED_HINT,
+  SPEC_STATUS_DEAD_HINT,
+} from '../config/specCopy'
+import { getStoryNodesForRole, type StoryOption } from '../config/storyNodes'
 import { useLLM } from '../hooks/useLLM'
 import { useGameStore } from '../store/gameStore'
 
@@ -51,9 +55,10 @@ export function SurvivalView() {
   const useRevive = useGameStore((state) => state.useRevive)
   const setTypingState = useGameStore((state) => state.setTypingState)
   const appendEventLog = useGameStore((state) => state.appendEventLog)
+  const setPendingHiddenEnding = useGameStore((state) => state.setPendingHiddenEnding)
   const { requestLLM, isLoading, isSlow } = useLLM()
 
-  const roleNodes = storyNodesMock[currentRole ?? 'PM']
+  const roleNodes = getStoryNodesForRole(currentRole)
   const currentNode = roleNodes[(currentRound - 1) % roleNodes.length]
   /**
    * 从事件流中提取最近一条 NPC 文案。
@@ -81,6 +86,12 @@ export function SurvivalView() {
 
   const handleSubmitInput = async (inputText: string) => {
     const llmResult = await requestLLM(inputText)
+    if (llmResult.hiddenEndingTag && llmResult.hiddenContext) {
+      setPendingHiddenEnding({
+        hiddenEndingTag: llmResult.hiddenEndingTag,
+        hiddenContext: llmResult.hiddenContext,
+      })
+    }
     appendEventLog({
       role: 'npc',
       content: llmResult.reply,
@@ -159,10 +170,10 @@ export function SurvivalView() {
 
         <motion.div variants={itemVariants}>
           {status === 'dead' ? (
-            <p className="mt-3 text-center text-sm text-critical">你已触发死局，请在下一任务接入复活分支。</p>
+            <p className="mt-3 text-center text-sm text-critical">{SPEC_STATUS_DEAD_HINT}</p>
           ) : null}
           {status === 'cleared' ? (
-            <p className="mt-3 text-center text-sm text-mint">恭喜完成当前演示回合，等待结算流程接入。</p>
+            <p className="mt-3 text-center text-sm text-mint">{SPEC_STATUS_CLEARED_HINT}</p>
           ) : null}
         </motion.div>
       </div>

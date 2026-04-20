@@ -1,0 +1,11 @@
+# Cursor 全局规约 (已由 `.cursor/rules/*.mdc` 管理)
+
+本工作区已开启 Cursor MDC (Multi-Document Context) 规则体系。
+具体核心规范，请直接查阅：
+- [核心工作流约束](.cursor/rules/00-core-workflow.mdc)
+
+**AI Assistant 读取指引：**
+1. 每次响应前，自动查阅 `.cursor/rules/00-core-workflow.mdc`。
+2. 强制遵循其中的 **阅读顺序** 和 **真源红线** 原则。
+3. 严格对照 `memory-bank/implementation-plan.md` 现有的 Task 与 Step，杜绝自主发散。
+4. 所有的文档依赖优先级为：`PRD.md` > `design-document.md` > `tech-stack.md` > `implementation-plan.md`。

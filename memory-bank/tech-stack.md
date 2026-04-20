@@ -1,58 +1,8 @@
-# 技术架构与闭环逻辑 (Tech Stack & Architecture)
-
-## 1. 纯 Serverless 防御性架构
-坚决摒弃厚重的全栈长连结构，本项目采用 **客户端 (React+Zustand) -> 边缘网桥 (Supabase Edge Function) -> LLM (Opencode)** 的三层防御架构。
-* **前端**：React 18 + Vite + Tailwind CSS + Framer Motion (负责极致性能体感与UI态护航)
-* **路由 & 数据持久化**：React Router v6 Hash 模式 (防微信刷新 404) + Zustand (极轻量化状态控制与 `lastRoundSnapshot` 落子回滚)
-* **海报生图内核**：`html2canvas` (Canvas直出大图) + `recharts` (SVG绘制数值雷达图) + `qrcode.react` (导流入口)
-
-## 2. LLM 双层断路器闭环 (AI Closed-Loop)
-这是防崩溃、防幻觉、防风险的最关键体系。
-
-### 第一层：前端客户端防线 (Front-end Breaker & UX Fallback)
-* **基础合规拦截**：输入框空值剔除、超长字符 (`>200`字) 本地斩断。
-* **正则表达式拦截库**：封堵 `["忽略", "ignore all", "instruction", "假装", "我是AI", "system"]` 等特征，查明意图直接短路并进入本轮回合警告分支，绝不上翻至服务器。
-* **限流与降级 UX**：发给 LLM 的 `fetch` 请求配置：
-  * **T+3s**：若接口仍处于 Pending，自动浮现"老板正在打字"等 5 组趣味化加载轮播，填充用户等待空白。
-  * **T+5s**：触发不可逾越的超时 `AbortController` 熔断机制，强制切入本地 Fallback，用通用惩罚模版推演下文，防白版死锁。
-
-### 第二层：Edge Function 语义与数值审查 (Backend Validator)
-* **系统协议规范 (Prompt Protocol)**：强制 qwen-3.5-plus 提供单一结构 JSON：
-  ```json
-  {
-    "verdict": "allow|penalty|block", 
-    "reply": "职场黑话回复(30-80字)", 
-    "effects": {"kpiDelta": Number, "shieldDelta": Number, "mentalDelta": Number}
-  }
-  ```
-* **绝对约束清洗**：Edge Function 返回前不仅检验 `verdict` 值，更要对每一个 Delta 进行检查。数值强行限定在 `[-25, +25]`。如果出现破坏"不可能三角"的正和博弈（三大数值均正向增长），或者命中 `block` 语境，Deno 层将暴力覆写返回统一 Fallback 数据包。
-
-## 3. 状态快照机制与断点续玩 (State Snapshot)
-* **后悔药架构 (Revive Strategy)**：
-  - 使用 Zustand 解耦管理生命周期。每一回合做抉择**前**，对 `{"currentRound", "stats", "eventLog"}` 进行深拷贝并设为 `lastRoundSnapshot`。
-  - 如果玩家因该抉择死亡并消耗特权复活，UI 无需重载，Zustand 直接将指针倒推回 `lastRoundSnapshot`，即可彻底复原。
-* **隐式自动挂起防崩溃 (Silent Save)**：
-  - 监听到 `visibilitychange: hidden` 或 `pagehide`（规避 Android 微信 X5 的前后台失焦陷阱），立即将整个 Session 的主脉络 `{"status", "stats", "currentRound", "eventLog"}` Serialize 写入 LocalStorage。
-  - 二次回流时检测是否存在 `playing` 态的数据，平滑唤醒。
-
-## 4. 关键防腐数据资产：本地剧本骨架 (Local Story Nodes)
-数据必须剥离出组件，以纯 JSON/TypeScript 闭包形式内建在前端，彻底解决弱网高并发死锁。
-* **结构化协定 (Node Spec)**：
-  ```typescript
-  type StoryNode = {
-    stepId: 1 | 2 | 3 | 4 | 5;
-    theme: '热身' | '甩锅' | '插单' | '死线' | '背锅';
-    role: 'PM' | 'Ops';
-    npcDialogue: string; // 打字机引擎注入源
-    presetOptions: [ // 三向选择数组
-      { id, text, effects: { kpiDelta, shieldDelta, mentalDelta } }
-    ]
-  }
-  ```
-* 客户端无需发包，交互与结算基于此固定骨架高速闭环。 
 # 技术栈推荐与架构设计 (Tech Stack & Architecture)
 
 基于《产品需求文档 (PRD)》、《产品设计文档》与《规格补充文档》，为确保"沉浸式岗位试跑模拟器"能够以极简、高质、快速迭代的方式落地，本项目优先采用 **BaaS (Backend-as-a-Service)** 架构。此方案大幅削减了传统后端的开发与运维成本，使团队能将核心精力聚焦于前端交互（动画、滑卡、打字机特效）与 LLM 提示词工程。
+
+> **规则优先级**：技术实现必须遵循 PRD -> 设计文档 -> 技术栈文档 -> 执行计划文档。若出现冲突，以前序文档为准。
 
 ---
 
@@ -73,7 +23,7 @@
 ### 1.2 后端与核心服务 (Backend / BaaS): Supabase + OpenCode API
 * **Supabase Edge Functions (边缘函数)**：
   * **选型理由**：由于纯前端直连 LLM 会暴露 API Key，必须有中间层。Supabase Edge Functions 支持 Deno + TypeScript，适合做 OpenCode API 转发、双层过滤、超时兜底和结构化响应封装。
-* **OpenCode API（qwen-3.5-plus）**：
+* **OpenCode API（qwen3.5-plus）**：
   * **选型理由**：已确定供应商与模型。通过 Edge Function 承载"3 秒趣味提示 + 5 秒硬切兜底"策略，并与游戏数值系统直接联动。System Prompt 规约见《规格补充文档》§7.3。
 * **Supabase PostgreSQL (数据库)**：
   * **选型理由**：虽然 MVP 主要走 `LocalStorage` 无需登录，但考虑到 P1 图鉴云同步、埋点和排行榜，保留平滑升级空间。
@@ -152,12 +102,13 @@
 
 ### 3.1 LLM 调用范围（MVP）
 * **预设选项（点击 Chip / 滑卡）**：走本地 `storyNodes.json` 数据，**不调用 LLM**。效果值硬编码在 JSON 中。
-* **自由文本输入**：调用 Supabase Edge Function → qwen-3.5-plus，返回 `LLMJudgeResult` 结构化数据。
+* **自由文本输入**：调用 Supabase Edge Function → qwen3.5-plus，返回 `LLMJudgeResult` 结构化数据。
 * 此策略保证断网时预设选项依然可玩，LLM 仅增强自由输入体验。
 
 ### 3.2 双层过滤策略（MVP）
 1. **第一层规则过滤**：前端+Edge Function 双重拦截 Prompt Injection、明显违规词、异常长度输入。正则规则见《规格补充文档》§11.1。
 2. **第二层语义审查**：对模型回复做 allow/penalty/block 结构化判定；block 时输出安全文案，不回传原始高风险内容。校验函数见《规格补充文档》§11.2。
+3. **规则主维护位**：双层过滤规则与阈值统一维护在《规格补充文档》，本文件仅说明技术实现映射，避免规则双写漂移。
 
 ### 3.3 超时与降级策略（MVP）
 1. 请求 3 秒未完成：前端显示趣味 Loading 文案（文案池见《规格补充文档》§9.1）。
@@ -166,6 +117,7 @@
 ### 3.4 图鉴存储策略（MVP）
 1. LocalStorage 仅保存结算元数据（`GameResult`），不长期保存整张 base64 海报。
 2. 海报在用户查看或分享时按需重渲染，降低容量风险与损坏概率。
+3. 若触发隐藏结局，元数据需包含隐藏结局标签与触发来源，用于结果页展示与后续分析。
 
 ### 3.5 路由方案
 * 使用 `react-router-dom v6` 的 `HashRouter`（兼容微信 X5）。

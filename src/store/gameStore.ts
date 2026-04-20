@@ -1,9 +1,8 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { EventEffects } from '../config/storyNodes'
+import type { EventEffects, RoleType } from '../config/storyNodes'
 import { clamp } from '../utils/clamp'
 
-export type RoleType = 'PM' | 'Ops'
 export type GameStatus = 'onboarding' | 'playing' | 'dead' | 'cleared'
 
 export type EventLogItem = {
@@ -39,6 +38,13 @@ export type GameResult = {
   hiddenContext?: string
 }
 
+export type HiddenEndingTag = 'active_resign_flow' | 'full_slack_flow'
+
+export type HiddenEndingMeta = {
+  hiddenEndingTag: HiddenEndingTag
+  hiddenContext: string
+}
+
 const initialState = {
   status: 'onboarding' as GameStatus,
   currentRound: 1 as 1 | 2 | 3 | 4 | 5,
@@ -51,6 +57,7 @@ const initialState = {
   reviveUsed: false,
   lastRoundSnapshot: null as RoundSnapshot | null,
   historyPokedex: [] as GameResult[],
+  pendingHiddenEnding: null as HiddenEndingMeta | null,
 }
 
 type GameStoreState = {
@@ -65,9 +72,14 @@ type GameStoreState = {
   reviveUsed: boolean
   lastRoundSnapshot: RoundSnapshot | null
   historyPokedex: GameResult[]
+  pendingHiddenEnding: HiddenEndingMeta | null
+  /** 持久化匿名设备 id，用于 A/B Sticky 与 `ab_clicks.device_id`。 */
+  deviceId: string
   isTyping: boolean
   currentRole: RoleType | null
   agreedDisclaimer: boolean
+  /** 首次进入应用时生成并写入 persist。 */
+  ensureDeviceId: () => void
   setRole: (role: RoleType) => void
   setAgreedDisclaimer: (agreed: boolean) => void
   startNewGame: () => void
@@ -80,6 +92,8 @@ type GameStoreState = {
   useRevive: () => void
   appendEventLog: (eventItem: EventLogItem) => void
   addGameResult: (result: Omit<GameResult, 'resultId' | 'createdAt'>) => void
+  setPendingHiddenEnding: (meta: HiddenEndingMeta) => void
+  clearPendingHiddenEnding: () => void
   resetForTest: () => void
 }
 
@@ -87,9 +101,18 @@ export const useGameStore = create<GameStoreState>()(
   persist(
     (set) => ({
       ...initialState,
+      deviceId: '',
       isTyping: false,
       currentRole: null,
       agreedDisclaimer: false,
+      ensureDeviceId: () =>
+        set((state) =>
+          state.deviceId
+            ? {}
+            : {
+                deviceId: crypto.randomUUID(),
+              },
+        ),
       setRole: (role) =>
         set({
           currentRole: role,
@@ -101,10 +124,12 @@ export const useGameStore = create<GameStoreState>()(
       startNewGame: () =>
         set((state) => ({
           ...initialState,
+          deviceId: state.deviceId,
           isTyping: false,
           currentRole: state.currentRole,
           agreedDisclaimer: state.agreedDisclaimer,
           historyPokedex: state.historyPokedex,
+          pendingHiddenEnding: null,
           status: 'playing',
         })),
       resumeGame: () =>
@@ -248,13 +273,23 @@ export const useGameStore = create<GameStoreState>()(
             },
           ],
         })),
+      setPendingHiddenEnding: (meta) =>
+        set({
+          pendingHiddenEnding: meta,
+        }),
+      clearPendingHiddenEnding: () =>
+        set({
+          pendingHiddenEnding: null,
+        }),
       resetForTest: () =>
         set((state) => ({
           ...initialState,
+          deviceId: state.deviceId,
           isTyping: false,
           currentRole: state.currentRole,
           agreedDisclaimer: state.agreedDisclaimer,
           historyPokedex: state.historyPokedex,
+          pendingHiddenEnding: null,
         })),
     }),
     {
@@ -268,12 +303,19 @@ export const useGameStore = create<GameStoreState>()(
         reviveUsed: state.reviveUsed,
         lastRoundSnapshot: state.lastRoundSnapshot,
         historyPokedex: state.historyPokedex,
+        pendingHiddenEnding: state.pendingHiddenEnding,
         currentRole: state.currentRole,
         agreedDisclaimer: state.agreedDisclaimer,
+        deviceId: state.deviceId,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.isTyping = false
+          if (!state.deviceId) {
+            queueMicrotask(() => {
+              useGameStore.getState().ensureDeviceId()
+            })
+          }
         }
       },
     }

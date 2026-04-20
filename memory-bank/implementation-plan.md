@@ -157,3 +157,73 @@
   逐条自检《规格补充文档》§14 反模式清单，确保无企业官网风、无深色大面积、无不退化为纯聊天框。
 - **测试方法（P0 终极验收）**：在 Android Chrome 与 Android 微信 X5 完成全链路演示并录屏留档。
 - **阶段闭合（仓库）**：Task 12 全部 Step 已于 2026-04-20 勾选完毕；代码与清单回归项已合入主干。真机录屏终验为发布门禁，由产品/交付在设备上闭环签字。
+
+---
+
+## 阶段六：P1 运营与云端（roadmap）
+
+### Task 13: A/B 分享埋点 + `ab_clicks`
+**来源：** `roadmap_to_100_percent.md` 阶段六、`memory-bank/decision-log.md`
+- [x] **Step 1: Supabase migration**
+  创建 `ab_clicks`（`device_id uuid`、`variant`、`event`、`created_at`），`anon` 仅 `INSERT` RLS，索引 `device_id` / `created_at`。
+- [x] **Step 2: 设备 id 与 Sticky 组**
+  `gameStore` 持久化 `deviceId`（`crypto.randomUUID()`），`resolveAbShareVariant` 本地奇偶分组（`self_mock` / `pk_taunt`）。
+- [x] **Step 3: ResultView**
+  主按钮文案随组切换；点击「保存/分享」时 REST 写入埋点，前端 ~1000ms 防抖。
+- **测试方法**：配置 `VITE_SUPABASE_*` 后连点按钮，Supabase Table Editor（service role）可见多行 `share_save_click`；anon 下 `SELECT` 应被拒绝。
+
+### Task 14: `pokedex_sync` + 匿名榜 Top20
+**来源：** `roadmap_to_100_percent.md` 阶段六、`memory-bank/decision-log.md`
+- [x] **Step 1: Supabase migration**
+  `pokedex_sync`（`device_id`、`result_type`、`achieved_title`、`heat_percentage`、`kpi`/`shield`/`mental`、`rounds_survived`、`created_at`）；`anon` 仅 `INSERT`；`get_leaderboard_top20()` 为 `SECURITY DEFINER` 只读聚合，`anon` 仅 `EXECUTE`。
+- [x] **Step 2: 静默上报**
+  `ResultView` 写入本地 `GameResult` 后同拍 `insertPokedexSyncRow`（`deviceId` 来自 `gameStore`），不传 `fatal_quote` / 图片。
+- [x] **Step 3: Landing 入口 + 弹窗**
+  「比惨排行榜」打开 `LeaderboardModal`，RPC 拉 Top20；展示 `匿名打工人_XXXX`（UUID 去横杠后四位大写）。
+- **测试方法**：结算一局后 service role 可见 `pokedex_sync` 行；`anon` 对表 `GET` 被拒、`POST /rpc/get_leaderboard_top20` 返回 ≤20 行。
+
+---
+
+## 阶段八：内容矩阵扩充与裂变（roadmap）
+
+### Task 16: RD/QA 文案换皮扩展
+**来源：** `roadmap_to_100_percent.md` 阶段八、`memory-bank/decision-log.md`
+- [x] **Step 1: 真源扩展**
+  在 `memory-bank/game-data.json` 为 RD/QA 各补齐 5 回合（热身->甩锅->插单->死线->背锅）节点与 3 选项效果值。
+- [x] **Step 2: 运行时接线**
+  `storyNodes` 运行时统一读取 `game-data.json`；`LandingView` 增加 RD/QA 入局卡；`RoleType` 扩展为 PM/Ops/RD/QA。
+- [x] **Step 3: LLM 上下文兼容**
+  Edge Function `context.role` 扩展支持 RD/QA，保持自由输入语义完整。
+- **测试方法**：四角色均可开局并跑完 5 回合，死局/通关/复活流程一致，不新增额外机制分支。
+
+### Task 17: 引流 Deep Link 收口
+**来源：** `roadmap_to_100_percent.md` 阶段八、`memory-bank/decision-log.md`
+- [x] **Step 1: 固定首页目标**
+  结果页二维码始终指向首页 `#/`，不包含 `snapshotId` 或任意状态透传参数。
+- [x] **Step 2: 入口排查**
+  全仓检索并确认无 `snapshotId` 解析入口，无“空降复仇”恢复逻辑。
+- **测试方法**：扫码分享二维码只会进入首页首屏，需重新选岗开始，不会恢复他人局面。
+
+---
+
+## 发布门禁：PRD §7 真机验收记录区
+
+> 环境要求：Android Chrome + Android 微信 X5；每项建议附录屏链接（网盘或工单 URL）。
+
+### 设备信息
+- [ ] Android Chrome：机型 / 系统版本 / Chrome 版本：`TODO`
+- [ ] Android 微信 X5：机型 / 系统版本 / 微信版本：`TODO`
+
+### PRD §7 验收逐项记录
+- [ ] **1. 数值无死角**：覆盖送死流与通关流，三指标边界无崩溃。证据：`TODO`
+- [ ] **2. 体验无断点**：第三回合强退重进，能继续残局。证据：`TODO`
+- [ ] **3. 断网硬抗**：3 秒趣味提示 + 5 秒兜底切换，无白屏。证据：`TODO`
+- [ ] **4. 长按分享流**：海报无错位，二维码可扫码到首页。证据：`TODO`
+- [ ] **5. 打字气泡收缩**：输入聚焦时 chips 丝滑隐去且不挤压布局。证据：`TODO`
+- [ ] **6. 复活分支完整**：首次死局可复活/放弃，两路径稳定。证据：`TODO`
+- [ ] **7. 安卓优先验收**：Android Chrome 与微信 X5 主链路一致。证据：`TODO`
+- [ ] **8. 滑卡交互验收**：左右滑选与中间点击行为正确。证据：`TODO`
+
+### 签字结论
+- [ ] 门禁结论：通过（Go）
+- [ ] 责任人 / 日期：`TODO`

@@ -1,10 +1,13 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Variants } from 'framer-motion'
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { CapsuleButton } from '../components/common/CapsuleButton'
+import type { RoleType } from '../config/storyNodes'
+import { ResumePromptModal } from '../components/ResumePromptModal'
 import { useGameStore } from '../store/gameStore'
 import { useToastTrigger } from '../store/toastStore'
+import { LeaderboardModal } from '../components/LeaderboardModal'
 import { PokedexDrawer } from '../components/PokedexDrawer'
 
 const containerVariants: Variants = {
@@ -63,10 +66,43 @@ const footerVariants: Variants = {
   },
 }
 
+const roleCards: Array<{
+  role: RoleType
+  title: string
+  description: string
+  activeBorderClassName: string
+}> = [
+  {
+    role: 'PM',
+    title: '产品经理',
+    description: '需求翻译官，负责平衡老板、用户和研发。',
+    activeBorderClassName: 'border-sunset',
+  },
+  {
+    role: 'Ops',
+    title: '用户运营',
+    description: '活跃与留存守门员，负责对用户情绪精细运营。',
+    activeBorderClassName: 'border-babyblue',
+  },
+  {
+    role: 'RD',
+    title: '研发工程师',
+    description: '工位灭火队，负责让需求不炸、线上不崩。',
+    activeBorderClassName: 'border-mint',
+  },
+  {
+    role: 'QA',
+    title: '测试工程师',
+    description: '质量守夜人，负责在死线前揪出隐藏雷点。',
+    activeBorderClassName: 'border-critical',
+  },
+]
+
 export function LandingView() {
   const navigate = useNavigate()
   const triggerToast = useToastTrigger()
   const currentRole = useGameStore((state) => state.currentRole)
+  const currentRound = useGameStore((state) => state.currentRound)
   const agreedDisclaimer = useGameStore((state) => state.agreedDisclaimer)
   const status = useGameStore((state) => state.status)
   const historyPokedex = useGameStore((state) => state.historyPokedex)
@@ -76,9 +112,18 @@ export function LandingView() {
   const setAgreedDisclaimer = useGameStore((state) => state.setAgreedDisclaimer)
 
   const [isPokedexOpen, setIsPokedexOpen] = useState(false)
+  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false)
+  const [isResumePromptOpen, setIsResumePromptOpen] = useState(false)
+  const [resumePromptDismissed, setResumePromptDismissed] = useState(false)
 
   const canStartGame = Boolean(currentRole) && agreedDisclaimer
   const hasInProgressGame = status === 'playing'
+
+  useEffect(() => {
+    if (hasInProgressGame && agreedDisclaimer && !resumePromptDismissed) {
+      setIsResumePromptOpen(true)
+    }
+  }, [hasInProgressGame, agreedDisclaimer, resumePromptDismissed])
 
   const handleStartGame = () => {
     if (!currentRole) {
@@ -99,7 +144,24 @@ export function LandingView() {
       triggerToast({ tone: 'warn', message: '请先勾选免责声明后再入局。' })
       return
     }
+    setIsResumePromptOpen(false)
+    setResumePromptDismissed(true)
     resumeGame()
+    navigate('/survival')
+  }
+
+  const handleRestartFromPrompt = () => {
+    if (!currentRole) {
+      triggerToast({ tone: 'warn', message: '请先选择岗位方向。' })
+      return
+    }
+    if (!agreedDisclaimer) {
+      triggerToast({ tone: 'warn', message: '请先勾选免责声明后再入局。' })
+      return
+    }
+    setIsResumePromptOpen(false)
+    setResumePromptDismissed(true)
+    startNewGame()
     navigate('/survival')
   }
 
@@ -130,37 +192,24 @@ export function LandingView() {
         </motion.header>
 
         <motion.div className="grid gap-4" variants={roleGroupVariants}>
-          <motion.button
-            type="button"
-            className={[
-              'rounded-3xl border-2 bg-card-bg p-5 text-left shadow-sm',
-              currentRole === 'PM' ? 'border-sunset' : 'border-transparent',
-            ].join(' ')}
-            whileTap={{ scale: 0.98 }}
-            animate={{ scale: currentRole === 'PM' ? 1.02 : 1 }}
-            transition={{ type: 'spring', stiffness: 260, damping: 28 }}
-            onClick={() => setRole('PM')}
-            variants={roleCardVariants}
-          >
-            <h2 className="font-heading text-xl text-text-primary">产品经理</h2>
-            <p className="mt-2 text-sm text-text-secondary">需求翻译官，负责平衡老板、用户和研发。</p>
-          </motion.button>
-
-          <motion.button
-            type="button"
-            className={[
-              'rounded-3xl border-2 bg-card-bg p-5 text-left shadow-sm',
-              currentRole === 'Ops' ? 'border-babyblue' : 'border-transparent',
-            ].join(' ')}
-            whileTap={{ scale: 0.98 }}
-            animate={{ scale: currentRole === 'Ops' ? 1.02 : 1 }}
-            transition={{ type: 'spring', stiffness: 260, damping: 28 }}
-            onClick={() => setRole('Ops')}
-            variants={roleCardVariants}
-          >
-            <h2 className="font-heading text-xl text-text-primary">用户运营</h2>
-            <p className="mt-2 text-sm text-text-secondary">活跃与留存守门员，负责对用户情绪精细运营。</p>
-          </motion.button>
+          {roleCards.map((card) => (
+            <motion.button
+              key={card.role}
+              type="button"
+              className={[
+                'rounded-3xl border-2 bg-card-bg p-5 text-left shadow-sm',
+                currentRole === card.role ? card.activeBorderClassName : 'border-transparent',
+              ].join(' ')}
+              whileTap={{ scale: 0.98 }}
+              animate={{ scale: currentRole === card.role ? 1.02 : 1 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+              onClick={() => setRole(card.role)}
+              variants={roleCardVariants}
+            >
+              <h2 className="font-heading text-xl text-text-primary">{card.title}</h2>
+              <p className="mt-2 text-sm text-text-secondary">{card.description}</p>
+            </motion.button>
+          ))}
         </motion.div>
 
         <motion.div className="space-y-4" variants={footerVariants}>
@@ -177,16 +226,6 @@ export function LandingView() {
           </label>
 
           <div className="flex flex-col gap-3">
-            {hasInProgressGame && (
-              <CapsuleButton
-                variant="warning"
-                className="w-full"
-                onClick={handleResumeGame}
-              >
-                继续收拾烂摊子
-              </CapsuleButton>
-            )}
-
             <CapsuleButton
               className="w-full"
               disabled={!canStartGame}
@@ -195,17 +234,39 @@ export function LandingView() {
               {hasInProgressGame ? '重新入职' : '一键入职'}
             </CapsuleButton>
 
-            {historyPokedex.length > 0 && (
-              <button
-                onClick={() => setIsPokedexOpen(true)}
-                className="mx-auto mt-2 text-sm text-text-secondary underline underline-offset-4 opacity-80 transition-opacity hover:opacity-100"
+            <div className="mt-2 flex flex-col items-center gap-2">
+              <CapsuleButton
+                type="button"
+                className="w-full max-w-xs"
+                onClick={() => setIsLeaderboardOpen(true)}
               >
-                查看打工履历 ({historyPokedex.length})
-              </button>
-            )}
+                比惨排行榜
+              </CapsuleButton>
+              {historyPokedex.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsPokedexOpen(true)}
+                  className="text-sm text-text-secondary underline underline-offset-4 opacity-80 transition-opacity hover:opacity-100"
+                >
+                  查看打工履历 ({historyPokedex.length})
+                </button>
+              )}
+            </div>
           </div>
         </motion.div>
       </motion.section>
+
+      <LeaderboardModal open={isLeaderboardOpen} onClose={() => setIsLeaderboardOpen(false)} />
+      <ResumePromptModal
+        open={isResumePromptOpen}
+        currentRound={currentRound}
+        onContinue={handleResumeGame}
+        onRestart={handleRestartFromPrompt}
+        onClose={() => {
+          setIsResumePromptOpen(false)
+          setResumePromptDismissed(true)
+        }}
+      />
 
       <AnimatePresence>
         {isPokedexOpen && (

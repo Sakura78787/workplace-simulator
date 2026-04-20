@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { SPEC_FALLBACK_EFFECTS, SPEC_FALLBACK_MESSAGE } from '../config/specCopy'
-import { storyNodesMock } from '../config/storyNodes'
+import { defaultRole, getStoryNodesForRole } from '../config/storyNodes'
 import { runSafetyCheck } from '../services/safety'
 import { useGameStore } from '../store/gameStore'
 
@@ -17,6 +17,8 @@ export type LlmResponse = {
   effects: LlmEffects
   verdict: LlmVerdict
   reasonCode?: string
+  hiddenEndingTag?: 'active_resign_flow' | 'full_slack_flow'
+  hiddenContext?: string
 }
 
 type SupabaseFunctionOptions = {
@@ -49,8 +51,8 @@ async function requestEdgeLLM(input: string, { signal }: SupabaseFunctionOptions
   }
 
   const state = useGameStore.getState()
-  const role = state.currentRole ?? 'PM'
-  const roleNodes = storyNodesMock[role]
+  const role = state.currentRole ?? defaultRole
+  const roleNodes = getStoryNodesForRole(role)
   const currentNode = roleNodes[(state.currentRound - 1) % roleNodes.length]
 
   const response = await fetch(`${supabaseUrl}/functions/v1/chat-completion`, {
@@ -104,6 +106,11 @@ async function requestEdgeLLM(input: string, { signal }: SupabaseFunctionOptions
     },
     verdict,
     reasonCode: payload.reasonCode,
+    hiddenEndingTag:
+      payload.hiddenEndingTag === 'active_resign_flow' || payload.hiddenEndingTag === 'full_slack_flow'
+        ? payload.hiddenEndingTag
+        : undefined,
+    hiddenContext: typeof payload.hiddenContext === 'string' ? payload.hiddenContext : undefined,
   }
 }
 

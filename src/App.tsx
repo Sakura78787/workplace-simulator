@@ -13,6 +13,10 @@ import { useGameStore } from './store/gameStore'
 function App() {
   const location = useLocation()
 
+  useEffect(() => {
+    useGameStore.getState().ensureDeviceId()
+  }, [])
+
   // Task 11: 强制监听 visibilitychange 和 pagehide 以进行本地存储同步
   useEffect(() => {
     const handleVisibilityChange = () => {

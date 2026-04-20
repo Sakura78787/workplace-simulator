@@ -1,0 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+
+@font-face {
+  font-family: 'Smiley Sans';
+  src: url('https://cdn.jsdelivr.net/npm/smiley-sans@2.0.1/SmileySans-Oblique.woff2')
+    format('woff2');
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-height: 100dvh;
+  }
+
+  body {
+    margin: 0;
+    overflow-x: hidden;
+    background-color: #fff6d9;
+    color: #2f2a26;
+    font-family: 'Noto Sans SC', system-ui, sans-serif;
+  }
+}

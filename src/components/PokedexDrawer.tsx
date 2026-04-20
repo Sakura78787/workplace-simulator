@@ -68,6 +68,15 @@ export function PokedexDrawer({ pokedex, onClose }: PokedexDrawerProps) {
                   "{record.fatalQuote}"
                 </div>
 
+                {record.isHiddenEnding ? (
+                  <div className="mb-4 rounded-2xl border border-critical/30 bg-critical/5 p-3 text-xs text-text-secondary">
+                    <p className="font-medium text-critical">
+                      隐藏结局：{record.hiddenEndingTag === 'active_resign_flow' ? '主动离职流' : '彻底摆烂流'}
+                    </p>
+                    {record.hiddenContext ? <p className="mt-1">{record.hiddenContext}</p> : null}
+                  </div>
+                ) : null}
+
                 <footer className="flex items-center justify-between text-xs text-text-secondary">
                   <div className="flex gap-3">
                     <span>大饼:{record.finalStats.kpi}</span>

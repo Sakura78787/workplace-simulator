@@ -1,55 +1,20 @@
-# 架构与交互设计文档 (Design & UX)
-
-## 0. 严守的体验反模式 (Anti-Patterns)
-执行团队必须逐条核对，避免项目变味：
-* **严禁企业后台风**：禁用大面积深色、无任何数据表格与侧边栏导航。
-* **组件圆润化**：所有按钮强制胶囊形 (`rounded-full`)，卡片必须高圆角 (`rounded-2xl` 或 `rounded-3xl`)。
-* **物理弹簧动效**：所有视图切换、卡片归位、按钮按压必须使用 Spring 缓动，禁用生硬的 Linear（线性）动画。
-* **固定视口**：PC 端严格锁定 `414px` 宽居中手机壳，**不允许向两侧撑开弹性拉伸**。
-
-## 1. 核心色彩与字体库 (Visual Tokens)
-* **品牌基调 (Playful Pop)**：看起来轻松愉悦，玩起来大汗淋漓。
-* **核心色板**：
-  * 主底色：`#FFF6D9` (奶油黄)
-  * 安全/确认/增益：`#A8E6CF` (薄荷绿)
-  * 中性/过渡/拖拽：`#A2D2FF` (婴儿蓝)
-  * 警示/突降/动作：`#FFAAA5` (落日橘)
-  * 致命/闪烁特效：`#FF6B6B` (危急红)
-* **排版字体层级**：
-  * Display/H1/H2 标题层：`Smiley Sans` (得意黑，开源可商用)
-  * Body/Stat 基础阅读层：`Noto Sans SC` (思源黑体，开源可商用)
-
-## 2. 标准布局分区 (Central Card Flow)
-全屏视野被严格划分为三个不重叠、**不滚动的区域**：
-1. **顶部看板 (StatusBar)**：常驻胶囊型三维进度条（KPI、护盾、精神）。
-2. **中央事件区 (StoryCard 区)**：弹性居中，容纳剧情卡片（最宽340px）。文字呈现逐字打字机效果。
-3. **底部决策区 (DecisionArea)**：快捷芯片行 (QuickChips) + 胶囊状自由输入宽框 (FreeInput)。**细节：**当输入框聚焦时，芯片行自动通过 `translateY` 潜入底部并渐隐，绝不挤压可视区。
-
-## 3. 核心受虐交互规约 (Micro-Interactions)
-* **StoryCard 拖拉拽与滑选方向**：
-  * **轻拖 (位移 < 60px)**: 视觉反馈期。卡片随手指移动并微偏转（公式：`x * 8 / width`，最大 ±8°），滑向哪侧哪侧的 Chip 高亮。
-  * **滑选 (位移 ≥ 60px)**: 确认判定。向左滑映射 Chip1，向右滑映射 Chip3（中间选项仅限点击）。
-  * **回弹**：松手未过阈值，自动通过 `spring` 弹回原点归正。
-* **掉血刺痛感 (Critical Flash)**：
-  * 任何单次选择导致单项数值扣减 `>20` 时，画面边缘爆发 `120ms` 的 `#FF6B6B` 红框高规格闪烁动画（连续3次），增强惩罚痛感。
-
-## 4. 结算海报渲染规格 (Poster Specs)
-* **尺寸输出**：720 × 1280 (9:16 自拍比例)。
-* **离屏渲染方案**：基于 `html2canvas`。处理时放置于 `position: absolute; left: -9999px` 离屏区。
-* **构图要素**：
-  * 高光区：顶置 28px 超大倾斜称号。
-  * 核心区：200×200 的 Recharts 三维面积雷达图（薄荷绿填充 0.4 透明度）。
-  * 处刑区：14px 斜体的致命回复/死因金句。
-  * 引流区：底部居中的 80×80 QRCode，内嵌分享引导。
 # 产品设计文档 (Design Document) - 沉浸式岗位试跑模拟器
 
 基于《产品需求文档 (PRD)》、风格定义手册与《规格补充文档》，将"视觉治愈系 + 剧情毒打系 + 游戏化交互"转化为可执行的前端设计规约。
+
+> **规则优先级**：本文件为设计实现约束文档，业务规则与功能范围以 PRD 为唯一上位来源；若有冲突，以 PRD 为准。
 
 > **布局定稿（勘误）**：核心交互模型为**中央卡片游戏决策流**，非群聊滚动流。中央区域为当前事件卡，NPC对话在卡内打字机展现；底部为Chips+输入框；整个流程不需上下滚动。详见《规格补充文档》§1。
 
 ---
 
 ## 0. 风格与品牌落地约束 (Style Guardrails)
+
+### 0.0 硬性反模式清单 (Anti-Patterns)
+* **严禁企业后台风**：禁用大面积深色、数据表格主视图、侧边栏管理台布局。
+* **组件必须圆润化**：所有按钮强制胶囊形（rounded-full），卡片需高圆角（rounded-2xl 或 rounded-3xl）。
+* **动效必须 Spring**：页面切换、卡片回弹、按钮按压禁用生硬线性动画。
+* **固定移动壳**：PC 端严格锁定 414 宽居中展示，不允许横向拉伸为桌面布局。
 
 ### 0.1 品牌关键词
 * 灵动、柔和、Q弹、戏谑、荒诞、轻黑色幽默。
@@ -153,7 +118,7 @@ interface StatState {
 interface RoundSnapshot {
   round: number;
   stats: StatState;
-  eventLogLength: number;
+  eventLog: ChatHistory[];
 }
 
 interface ChatHistory {
@@ -200,17 +165,21 @@ interface LLMJudgeResult {
     mentalDelta: number;
   };
   reasonCode?: string;
+  hiddenEndingTag?: string; // 隐藏结局标识（如触发，则附带标签）
 }
 
 interface GameResult {
   resultId: string;
-  resultType: 'dead' | 'cleared';
+  resultType: 'dead' | 'cleared'; // 隐藏结局统一归为 'dead' 结算（轻量化方案）
   finalStats: StatState;
   fatalQuote?: string;
   achievedTitle: string;
   heatPercentage: string;
   qrTarget: string;
   createdAt: number;
+  isHiddenEnding?: boolean; // 标识是否为隐藏结局
+  hiddenEndingTag?: string; // 隐藏结局标签（如"主动离职流"）
+  hiddenContext?: string; // 触发语境摘要
 }
 ```
 
