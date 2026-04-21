@@ -234,7 +234,7 @@ async function requestModel(systemPrompt: string, userInput: string): Promise<Ll
       },
       signal: controller.signal,
       body: JSON.stringify({
-        model: 'qwen3.5-plus',
+        model: 'minimax-m2.7',
         temperature: 0.4,
         messages: [
           { role: 'system', content: systemPrompt },
