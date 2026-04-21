@@ -227,12 +227,11 @@ export function StoryCard({
           </motion.div>
         </motion.div>
         <div>
-          <p className="text-sm font-semibold text-text-primary">主管猪总</p>
+          <p className="text-sm font-semibold text-text-primary">狐狸主管</p>
           <p className="text-xs text-text-secondary">今天也在精准施压</p>
         </div>
       </div>
 
-      <p className="mb-4 text-xs text-text-secondary">⇠ 滑动抉择 ⇢</p>
       <p className="min-h-14 font-body text-base leading-relaxed text-text-primary">
         {words.slice(0, typedWordCount).map((word, index) => (
           <motion.span
@@ -254,9 +253,9 @@ export function StoryCard({
           />
         ) : null}
       </p>
-      <div className="mt-6 flex items-stretch justify-between gap-4 text-xs text-text-secondary">
-        <span className="flex-1 rounded-md bg-gray-100 p-2 text-center">⇠ 左滑：{leftOption.text}</span>
-        <span className="flex-1 rounded-md bg-gray-100 p-2 text-center">右滑：{rightOption.text} ⇢</span>
+      <div className="mt-6 flex items-stretch justify-between gap-3 text-[11px] font-medium leading-relaxed">
+        <span className="flex-1 rounded-xl bg-black/5 p-3 text-center text-text-secondary">⇠ 左滑：{leftOption.text}</span>
+        <span className="flex-1 rounded-xl bg-black/5 p-3 text-center text-text-secondary">右滑：{rightOption.text} ⇢</span>
       </div>
     </motion.div>
   )

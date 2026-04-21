@@ -147,7 +147,7 @@ export function useLLM() {
 
     const hardTimeout = window.setTimeout(() => {
       controller.abort()
-    }, 5000)
+    }, 15000)
 
     try {
       const response = await requestEdgeLLM(input, { signal: controller.signal })

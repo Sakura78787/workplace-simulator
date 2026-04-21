@@ -161,7 +161,7 @@ export function SurvivalView() {
         />
       </div>
 
-      <motion.div variants={itemVariants}>
+      <motion.div className="mt-12" variants={itemVariants}>
         <StatusBar stats={stats} />
       </motion.div>
 

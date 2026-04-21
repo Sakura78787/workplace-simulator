@@ -260,7 +260,7 @@ async function requestModel(systemPrompt: string, userInput: string): Promise<Ll
   }
 
   const timeoutController = new AbortController()
-  const timeoutId = setTimeout(() => timeoutController.abort('edge_timeout'), 4500)
+  const timeoutId = setTimeout(() => timeoutController.abort('edge_timeout'), 14000)
 
   try {
     const upstreamResponse = await fetch(endpoint, {
@@ -272,7 +272,7 @@ async function requestModel(systemPrompt: string, userInput: string): Promise<Ll
       signal: timeoutController.signal,
       body: JSON.stringify({
         model: 'qwen3.5-plus',
-        temperature: 0.7,
+        temperature: 0.4,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userInput },

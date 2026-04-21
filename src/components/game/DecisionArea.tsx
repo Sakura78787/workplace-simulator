@@ -1,6 +1,4 @@
-import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
-import { SPRING_STIFF } from '../../config/motion'
 import type { StoryOption } from '../../config/storyNodes'
 
 type DecisionAreaProps = {
@@ -11,58 +9,19 @@ type DecisionAreaProps = {
   isSubmitting?: boolean
 }
 
-const longPressThresholdMs = 400
-
 export function DecisionArea({
-  options,
-  onQuickSelect,
   onSubmitInput,
   isInteractionLocked = false,
   isSubmitting = false,
 }: DecisionAreaProps) {
   const [inputValue, setInputValue] = useState('')
-  const [isInputFocused, setIsInputFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
-  const longPressTimerRef = useRef<number | null>(null)
-  const hasLongPressedRef = useRef(false)
 
-  /** NPC 打字或 LLM 等待期间：强制失焦，防止移动浏览器拉起键盘。 */
   useEffect(() => {
     if (isInteractionLocked) {
       inputRef.current?.blur()
     }
   }, [isInteractionLocked])
-
-  const hideQuickChips = isInputFocused || isInteractionLocked
-
-  const clearLongPressTimer = () => {
-    if (!longPressTimerRef.current) return
-    window.clearTimeout(longPressTimerRef.current)
-    longPressTimerRef.current = null
-  }
-
-  const handlePointerDown = (option: StoryOption) => {
-    if (isInteractionLocked) return
-
-    hasLongPressedRef.current = false
-    clearLongPressTimer()
-    longPressTimerRef.current = window.setTimeout(() => {
-      setInputValue(option.text)
-      hasLongPressedRef.current = true
-    }, longPressThresholdMs)
-  }
-
-  const handlePointerUp = async (option: StoryOption) => {
-    if (isInteractionLocked) return
-
-    const isLongPressAction = hasLongPressedRef.current
-    clearLongPressTimer()
-    hasLongPressedRef.current = false
-
-    if (!isLongPressAction) {
-      await onQuickSelect(option)
-    }
-  }
 
   const handleSubmitInput = async () => {
     const trimmedInput = inputValue.trim()
@@ -77,50 +36,11 @@ export function DecisionArea({
       style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom, 0px))' }}
     >
       <div className="relative flex flex-col gap-3 rounded-[28px] border border-white/45 bg-white/50 p-3 shadow-[0_12px_24px_rgba(45,45,45,0.1)] backdrop-blur-xl">
-        <AnimatePresence initial={false}>
-          {!hideQuickChips && (
-            <motion.div
-              className="flex flex-nowrap gap-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-              initial={{ height: 'auto', opacity: 1 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0, overflow: 'hidden', marginTop: 0 }}
-              transition={{ type: 'spring', stiffness: 360, damping: 28 }}
-            >
-              {options.filter((_, idx) => idx === 0 || idx === 2).map((option) => (
-                <motion.button
-                  key={option.id}
-                  type="button"
-                  className={[
-                    'shrink-0 rounded-full px-4 py-2 text-xs text-left leading-relaxed shadow-sm',
-                    isInteractionLocked ? 'bg-text-secondary/20 text-text-secondary' : 'bg-white/80 text-text-primary border border-white',
-                  ].join(' ')}
-                  onPointerDown={() => handlePointerDown(option)}
-                  onPointerUp={() => {
-                    void handlePointerUp(option)
-                  }}
-                  onPointerCancel={clearLongPressTimer}
-                  onPointerLeave={clearLongPressTimer}
-                  onClick={(event) => {
-                    event.preventDefault()
-                  }}
-                  disabled={isInteractionLocked}
-                  whileTap={isInteractionLocked ? undefined : { scale: 0.92 }}
-                  transition={SPRING_STIFF}
-                >
-                  {option.text}
-                </motion.button>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         <div className="flex items-center gap-2 rounded-full border border-white/60 bg-white/65 p-1">
           <input
             ref={inputRef}
             value={inputValue}
             onChange={(event) => setInputValue(event.target.value)}
-            onFocus={() => setIsInputFocused(true)}
-            onBlur={() => setIsInputFocused(false)}
             placeholder="输入你的回复（本任务为占位输入）"
             className="h-10 flex-1 rounded-full border-none bg-transparent px-3 text-sm text-text-primary outline-none"
             disabled={isInteractionLocked}

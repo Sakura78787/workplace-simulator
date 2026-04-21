@@ -89,10 +89,11 @@ function ReceiptPoster({ summary, stats, qrTarget, compact = false }: ReceiptPos
   return (
     <article
       className={[
-        'rounded-3xl border border-white/60 bg-white/90 shadow-[0_20px_48px_rgba(45,45,45,0.14)] [-webkit-touch-callout:default]',
+        'relative overflow-hidden rounded-3xl border border-white/60 bg-white/90 shadow-[0_20px_48px_rgba(45,45,45,0.14)] [-webkit-touch-callout:default]',
         compact ? 'p-6' : 'p-8',
       ].join(' ')}
     >
+      <div className="absolute right-3 top-6 z-10 rotate-[15deg] rounded-sm border-[3px] border-critical px-2 py-1 text-sm font-black tracking-widest text-critical opacity-80 pointer-events-none">【牛马认证】</div>
       <header className="space-y-2 border-b border-dashed border-text-secondary/20 pb-4">
         <p className="text-xs uppercase tracking-[0.35em] text-text-secondary">Workplace Receipt</p>
         <h1 className="font-heading text-3xl text-text-primary">{summary.achievedTitle}</h1>
@@ -103,7 +104,7 @@ function ReceiptPoster({ summary, stats, qrTarget, compact = false }: ReceiptPos
 
       <div className="mt-5 rounded-2xl bg-cream/70 p-4">
         <p className="text-xs text-text-secondary">致命金句</p>
-        <p className="mt-2 text-sm leading-relaxed text-text-primary">{summary.fatalQuote}</p>
+        <p className="mt-3 rounded-lg bg-critical/5 p-4 text-base font-bold leading-relaxed text-critical shadow-inner">"{summary.fatalQuote}"</p>
       </div>
 
       {summary.hiddenEndingTag ? (
@@ -119,7 +120,7 @@ function ReceiptPoster({ summary, stats, qrTarget, compact = false }: ReceiptPos
       <div className="mt-6 flex items-end justify-between gap-4">
         <div className="h-[200px] w-[200px] rounded-2xl bg-white/70 p-2">
           <ResponsiveContainer width="100%" height="100%">
-            <RadarChart data={radarData}>
+            <RadarChart data={radarData} margin={{ top: 25, right: 25, bottom: 25, left: 25 }}>
               <PolarGrid stroke="rgba(47,42,38,0.18)" />
               <PolarAngleAxis dataKey="subject" tick={{ fill: '#6b6159', fontSize: 12 }} />
               <Radar dataKey="value" stroke="#FFAAA5" fill="#A8E6CF" fillOpacity={0.6} />
