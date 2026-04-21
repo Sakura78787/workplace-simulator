@@ -191,7 +191,7 @@ export function LandingView() {
           <p className="text-sm text-text-secondary">先选身份，再看看你能扛到第几轮。</p>
         </motion.header>
 
-        <motion.div className="grid gap-4 flex-1 overflow-y-auto mb-4 py-2" variants={roleGroupVariants}>
+        <motion.div className="role-list-scrollbar grid flex-1 gap-4 overflow-y-auto overflow-x-hidden mb-4 py-2 px-2 -mx-2" variants={roleGroupVariants}>
           {roleCards.map((card) => (
             <motion.button
               key={card.role}

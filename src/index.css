@@ -29,3 +29,21 @@
     font-family: 'Noto Sans SC', system-ui, sans-serif;
   }
 }
+
+@layer utilities {
+  .role-list-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(203, 213, 225, 0.8) transparent;
+  }
+  .role-list-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .role-list-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .role-list-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(203, 213, 225, 0.8);
+    border-radius: 10px;
+  }
+}
+

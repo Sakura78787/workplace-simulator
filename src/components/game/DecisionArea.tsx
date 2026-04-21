@@ -41,7 +41,7 @@ export function DecisionArea({
             ref={inputRef}
             value={inputValue}
             onChange={(event) => setInputValue(event.target.value)}
-            placeholder="输入你的回复（本任务为占位输入）"
+            placeholder="输入你的回复（不超过50字）"
             className="h-10 flex-1 rounded-full border-none bg-transparent px-3 text-sm text-text-primary outline-none"
             disabled={isInteractionLocked}
           />
