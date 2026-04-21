@@ -1,3 +1,5 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node'
+
 type LlmVerdict = 'allow' | 'penalty' | 'block' | 'fallback'
 
 type LlmEffects = {
@@ -20,11 +22,7 @@ type LlmContext = {
   currentRound?: number
   theme?: string
   npcDialogue?: string
-  stats?: {
-    kpi: number
-    shield: number
-    mental: number
-  }
+  stats?: { kpi: number; shield: number; mental: number }
 }
 
 type ChatCompletionRequest = {
@@ -32,21 +30,11 @@ type ChatCompletionRequest = {
   context?: LlmContext
 }
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
-
 const fallbackResponse: LlmResponse = {
   verdict: 'fallback',
   reply: '职场服务器开小差了。不过别高兴，扣分照旧。',
-  effects: {
-    kpiDelta: -6,
-    shieldDelta: -6,
-    mentalDelta: -6,
-  },
-  reasonCode: 'edge_fallback',
+  effects: { kpiDelta: -6, shieldDelta: -6, mentalDelta: -6 },
+  reasonCode: 'vercel_fallback',
 }
 
 const firstLayerInjectionPatterns = [
@@ -61,15 +49,10 @@ const firstLayerInjectionPatterns = [
 const firstLayerBlockKeywords = ['涉政', '色情', '暴恐', '自残', '洗钱', '黑产', '仇恨']
 const secondLayerUnsafeReplyPatterns = [/教你绕过/gi, /非法操作/gi, /暴力报复/gi, /仇恨言论/gi]
 const maxInputLength = 200
+
 const hiddenEndingRules: Array<{ tag: 'active_resign_flow' | 'full_slack_flow'; patterns: RegExp[] }> = [
-  {
-    tag: 'active_resign_flow',
-    patterns: [/离职|辞职|不干了|退出|跑路/gi, /拒绝协作|不配合|不推进/gi],
-  },
-  {
-    tag: 'full_slack_flow',
-    patterns: [/摆烂|躺平|随便|懒得管|烂掉/gi, /嘲讽|阴阳怪气|摆明不做/gi],
-  },
+  { tag: 'active_resign_flow', patterns: [/离职|辞职|不干了|退出|跑路/gi, /拒绝协作|不配合|不推进/gi] },
+  { tag: 'full_slack_flow', patterns: [/摆烂|躺平|随便|懒得管|烂掉/gi, /嘲讽|阴阳怪气|摆明不做/gi] },
 ]
 
 const SYSTEM_PROMPT_TEMPLATE = `你是一个名为"职场试毒模拟器"的文字生存游戏中的NPC剧情渲染引擎。
@@ -113,13 +96,6 @@ const SYSTEM_PROMPT_TEMPLATE = `你是一个名为"职场试毒模拟器"的文�
   "reasonCode": "可选：判定理由短码"
 }`
 
-function getSystemPromptTemplate(): string {
-  return SYSTEM_PROMPT_TEMPLATE
-}
-
-/**
- * 用当前回合上下文替换系统提示词中的占位符。
- */
 function buildSystemPrompt(template: string, context: LlmContext): string {
   const role = context.role ?? 'PM'
   const currentRound = context.currentRound ?? 1
@@ -139,16 +115,6 @@ function buildSystemPrompt(template: string, context: LlmContext): string {
     .replaceAll('{{mental}}', String(mental))
 }
 
-function createJsonResponse(data: LlmResponse, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      ...corsHeaders,
-      'Content-Type': 'application/json; charset=utf-8',
-    },
-  })
-}
-
 function inferHiddenEndingTag(input: string): LlmResponse['hiddenEndingTag'] {
   const trimmed = input.trim()
   for (const rule of hiddenEndingRules) {
@@ -163,56 +129,28 @@ function clampDelta(value: number): number {
   return Math.max(-25, Math.min(25, Math.round(value)))
 }
 
-/**
- * 第一层规则过滤：在边缘函数层先兜住明显风险输入。
- */
 function runFirstLayerFilter(input: string): LlmResponse | null {
   const trimmed = input.trim()
 
   if (trimmed.length === 0) {
-    return {
-      verdict: 'block',
-      reply: '输入内容为空，无法进行判定。',
-      effects: { kpiDelta: -8, shieldDelta: -8, mentalDelta: -8 },
-      reasonCode: 'empty_input',
-    }
+    return { verdict: 'block', reply: '输入内容为空，无法进行判定。', effects: { kpiDelta: -8, shieldDelta: -8, mentalDelta: -8 }, reasonCode: 'empty_input' }
   }
 
   if (trimmed.length > maxInputLength) {
-    return {
-      verdict: 'block',
-      reply: '输入内容过长，已触发安全拦截。',
-      effects: { kpiDelta: -8, shieldDelta: -8, mentalDelta: -8 },
-      reasonCode: 'input_too_long',
-    }
+    return { verdict: 'block', reply: '输入内容过长，已触发安全拦截。', effects: { kpiDelta: -8, shieldDelta: -8, mentalDelta: -8 }, reasonCode: 'input_too_long' }
   }
 
-  const hitInjection = firstLayerInjectionPatterns.some((pattern) => pattern.test(trimmed))
-  if (hitInjection) {
-    return {
-      verdict: 'block',
-      reply: '检测到潜在注入指令，已触发安全拦截。',
-      effects: { kpiDelta: -8, shieldDelta: -8, mentalDelta: -8 },
-      reasonCode: 'prompt_injection',
-    }
+  if (firstLayerInjectionPatterns.some((pattern) => pattern.test(trimmed))) {
+    return { verdict: 'block', reply: '检测到潜在注入指令，已触发安全拦截。', effects: { kpiDelta: -8, shieldDelta: -8, mentalDelta: -8 }, reasonCode: 'prompt_injection' }
   }
 
-  const hitKeyword = firstLayerBlockKeywords.some((keyword) => trimmed.includes(keyword))
-  if (hitKeyword) {
-    return {
-      verdict: 'block',
-      reply: '当前输入超出本场景可处理范围，请更换表达方式。',
-      effects: { kpiDelta: -8, shieldDelta: -8, mentalDelta: -8 },
-      reasonCode: 'blocked_keyword',
-    }
+  if (firstLayerBlockKeywords.some((keyword) => trimmed.includes(keyword))) {
+    return { verdict: 'block', reply: '当前输入超出本场景可处理范围，请更换表达方式。', effects: { kpiDelta: -8, shieldDelta: -8, mentalDelta: -8 }, reasonCode: 'blocked_keyword' }
   }
 
   return null
 }
 
-/**
- * 从文本中提取 JSON 片段，兼容模型返回 Markdown code fence 的情况。
- */
 function extractJsonString(raw: string): string {
   const fencedMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)
   if (fencedMatch?.[1]) {
@@ -224,9 +162,6 @@ function extractJsonString(raw: string): string {
   return objectMatch ? objectMatch[0] : raw
 }
 
-/**
- * 第二层语义审查：对模型输出做结构归一和风险兜底。
- */
 function normalizeAndReviewModelResult(candidate: unknown): LlmResponse {
   if (!candidate || typeof candidate !== 'object') {
     return { ...fallbackResponse, reasonCode: 'invalid_json_payload' }
@@ -234,9 +169,7 @@ function normalizeAndReviewModelResult(candidate: unknown): LlmResponse {
 
   const parsed = candidate as Partial<LlmResponse>
   const allowedVerdicts: LlmVerdict[] = ['allow', 'penalty', 'block', 'fallback']
-  const verdict = allowedVerdicts.includes(parsed.verdict as LlmVerdict)
-    ? (parsed.verdict as LlmVerdict)
-    : 'fallback'
+  const verdict = allowedVerdicts.includes(parsed.verdict as LlmVerdict) ? (parsed.verdict as LlmVerdict) : 'fallback'
   const reply = typeof parsed.reply === 'string' ? parsed.reply.trim() : ''
   const effects = parsed.effects ?? { kpiDelta: -6, shieldDelta: -6, mentalDelta: -6 }
   const reasonCode = typeof parsed.reasonCode === 'string' ? parsed.reasonCode : undefined
@@ -274,31 +207,23 @@ function normalizeAndReviewModelResult(candidate: unknown): LlmResponse {
 }
 
 async function requestModel(systemPrompt: string, userInput: string): Promise<LlmResponse> {
-  const envObj = Deno.env.toObject()
-  console.log('【可用环境变量keys】', Object.keys(envObj).sort().join(', '))
-
-  const endpoint = envObj['OPENCODE_API_URL']?.trim() || Deno.env.get('OPENCODE_API_URL')?.trim()
-  const apiKey = envObj['OPENCODE_API_KEY']?.trim() || Deno.env.get('OPENCODE_API_KEY')?.trim()
-
-  console.log('【OPENCODE_API_URL存在】', !!endpoint, endpoint ? `len=${endpoint.length} prefix=${endpoint.slice(0, 10)}...` : 'EMPTY')
-  console.log('【OPENCODE_API_KEY存在】', !!apiKey, apiKey ? `len=${apiKey.length}` : 'EMPTY')
+  const endpoint = (process.env.OPENCODE_API_URL ?? '').trim().replace(/\/+$/, '')
+  const apiKey = (process.env.OPENCODE_API_KEY ?? '').trim()
 
   if (!endpoint || !apiKey) {
-    return {
-      ...fallbackResponse,
-      reasonCode: 'upstream_not_configured',
-    }
+    console.error('【vercel】环境变量缺失: OPENCODE_API_URL=', !!endpoint, 'OPENCODE_API_KEY=', !!apiKey)
+    return { ...fallbackResponse, reasonCode: 'upstream_not_configured' }
   }
 
-  const timeoutController = new AbortController()
-  const timeoutId = setTimeout(() => timeoutController.abort('edge_timeout'), 14000)
-
-  let requestUrl = endpoint.replace(/\/+$/, '')
+  let requestUrl = endpoint
   if (!requestUrl.includes('/chat/completions')) {
     requestUrl = `${requestUrl}/chat/completions`
   }
 
-  console.log('【请求URL】', requestUrl)
+  console.log('【vercel请求URL】', requestUrl)
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 25000)
 
   try {
     const upstreamResponse = await fetch(requestUrl, {
@@ -307,7 +232,7 @@ async function requestModel(systemPrompt: string, userInput: string): Promise<Ll
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
-      signal: timeoutController.signal,
+      signal: controller.signal,
       body: JSON.stringify({
         model: 'qwen3.5-plus',
         temperature: 0.4,
@@ -318,27 +243,22 @@ async function requestModel(systemPrompt: string, userInput: string): Promise<Ll
       }),
     })
 
-    console.log('【大模型响应状态】', upstreamResponse.status, upstreamResponse.statusText)
+    console.log('【vercel响应状态】', upstreamResponse.status, upstreamResponse.statusText)
 
     if (!upstreamResponse.ok) {
       const errorText = await upstreamResponse.text()
-      console.error(`【大模型报错回传】 HTTP ${upstreamResponse.status}:`, errorText)
-      return {
-        ...fallbackResponse,
-        reasonCode: `upstream_http_${upstreamResponse.status}`,
-      }
+      console.error('【vercel大模型报错】 HTTP', upstreamResponse.status, errorText.slice(0, 500))
+      return { ...fallbackResponse, reasonCode: `upstream_http_${upstreamResponse.status}` }
     }
 
     const payload = (await upstreamResponse.json()) as {
       choices?: Array<{ message?: { content?: string } }>
     }
     const content = payload.choices?.[0]?.message?.content ?? ''
-    console.log('【模型返回content】', content.slice(0, 200))
+    console.log('【vercel模型返回】', content.slice(0, 200))
+
     if (!content) {
-      return {
-        ...fallbackResponse,
-        reasonCode: 'upstream_empty_content',
-      }
+      return { ...fallbackResponse, reasonCode: 'upstream_empty_content' }
     }
 
     const jsonText = extractJsonString(content)
@@ -346,69 +266,59 @@ async function requestModel(systemPrompt: string, userInput: string): Promise<Ll
     try {
       parsedResult = JSON.parse(jsonText)
     } catch {
-      console.error('【JSON解析失败，原文】:', jsonText)
+      console.error('【vercel JSON解析失败】', jsonText.slice(0, 300))
       return { ...fallbackResponse, reasonCode: 'json_parse_error' }
     }
     return normalizeAndReviewModelResult(parsedResult)
   } catch (error) {
-    const isTimeoutAbort = error instanceof DOMException && error.name === 'AbortError'
-    console.error('【fetch异常】', error instanceof Error ? `${error.name}: ${error.message}` : String(error))
-    return {
-      ...fallbackResponse,
-      reasonCode: isTimeoutAbort ? 'edge_timeout_fallback' : 'edge_request_error',
-    }
+    const isAbort = error instanceof DOMException && error.name === 'AbortError'
+    console.error('【vercel fetch异常】', error instanceof Error ? `${error.name}: ${error.message}` : String(error))
+    return { ...fallbackResponse, reasonCode: isAbort ? 'vercel_timeout_fallback' : 'vercel_request_error' }
   } finally {
     clearTimeout(timeoutId)
   }
 }
 
-Deno.serve(async (request) => {
-  if (request.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+    return res.status(200).end()
   }
 
-  if (request.method !== 'POST') {
-    return createJsonResponse(
-      {
-        ...fallbackResponse,
-        reasonCode: 'method_not_allowed',
-      },
-      405,
-    )
+  if (req.method !== 'POST') {
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    return res.status(405).json({ ...fallbackResponse, reasonCode: 'method_not_allowed' })
   }
 
   try {
-    const body = (await request.json()) as ChatCompletionRequest
+    const body = (typeof req.body === 'object' && req.body !== null ? req.body : {}) as ChatCompletionRequest
     const input = typeof body.input === 'string' ? body.input : ''
     const context = body.context ?? {}
 
-    console.log('【请求Payload】', JSON.stringify({ input, context }))
+    console.log('【vercel请求Payload】', JSON.stringify({ input, context }).slice(0, 300))
 
     const firstLayerBlocked = runFirstLayerFilter(input)
     if (firstLayerBlocked) {
-      return createJsonResponse(firstLayerBlocked)
+      res.setHeader('Access-Control-Allow-Origin', '*')
+      return res.status(200).json(firstLayerBlocked)
     }
 
-    const systemPromptTemplate = getSystemPromptTemplate()
-    console.log('【模板加载】成功, 长度:', systemPromptTemplate.length)
-
-    const systemPrompt = buildSystemPrompt(systemPromptTemplate, context)
-    console.log('【进入requestModel】systemPrompt长度:', systemPrompt.length)
-
+    const systemPrompt = buildSystemPrompt(SYSTEM_PROMPT_TEMPLATE, context)
     const reviewedResult = await requestModel(systemPrompt, input)
     const hiddenEndingTag = inferHiddenEndingTag(input)
+
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Content-Type', 'application/json; charset=utf-8')
+
     if (hiddenEndingTag && reviewedResult.verdict !== 'block') {
-      return createJsonResponse({
-        ...reviewedResult,
-        hiddenEndingTag,
-        hiddenContext: input.slice(0, 120),
-      })
+      return res.status(200).json({ ...reviewedResult, hiddenEndingTag, hiddenContext: input.slice(0, 120) })
     }
-    return createJsonResponse(reviewedResult)
-  } catch {
-    return createJsonResponse({
-      ...fallbackResponse,
-      reasonCode: 'edge_unhandled_error',
-    })
+    return res.status(200).json(reviewedResult)
+  } catch (error) {
+    console.error('【vercel未处理异常】', error instanceof Error ? error.message : String(error))
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    return res.status(200).json({ ...fallbackResponse, reasonCode: 'vercel_unhandled_error' })
   }
-})
+}

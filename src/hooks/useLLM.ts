@@ -3,7 +3,6 @@ import { SPEC_FALLBACK_EFFECTS, SPEC_FALLBACK_MESSAGE } from '../config/specCopy
 import { defaultRole, getStoryNodesForRole } from '../config/storyNodes'
 import { runSafetyCheck } from '../services/safety'
 import { useGameStore } from '../store/gameStore'
-import { getSupabasePublicEnv, joinSupabasePath } from '../utils/supabasePublic'
 
 export type LlmVerdict = 'allow' | 'penalty' | 'block' | 'fallback'
 
@@ -22,10 +21,6 @@ export type LlmResponse = {
   hiddenContext?: string
 }
 
-type SupabaseFunctionOptions = {
-  signal: AbortSignal
-}
-
 const FALLBACK_RESPONSE: LlmResponse = {
   reply: SPEC_FALLBACK_MESSAGE,
   effects: {
@@ -37,31 +32,15 @@ const FALLBACK_RESPONSE: LlmResponse = {
   reasonCode: 'timeout_fallback',
 }
 
-/**
- * 调用 Supabase Edge Function 获取结构化 LLM 判定结果。
- */
-async function requestEdgeLLM(input: string, { signal }: SupabaseFunctionOptions): Promise<LlmResponse> {
-  const supabase = getSupabasePublicEnv()
-  if (!supabase) {
-    return {
-      ...FALLBACK_RESPONSE,
-      reasonCode: 'supabase_not_configured',
-    }
-  }
-
+async function requestVercelLLM(input: string, signal: AbortSignal): Promise<LlmResponse> {
   const state = useGameStore.getState()
   const role = state.currentRole ?? defaultRole
   const roleNodes = getStoryNodesForRole(role)
   const currentNode = roleNodes[(state.currentRound - 1) % roleNodes.length]
 
-  const url = joinSupabasePath(supabase.baseUrl, '/functions/v1/chat-completion')
-  const response = await fetch(url, {
+  const response = await fetch('/api/chat-completion', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: supabase.anonKey,
-      Authorization: `Bearer ${supabase.anonKey}`,
-    },
+    headers: { 'Content-Type': 'application/json' },
     signal,
     body: JSON.stringify({
       input,
@@ -76,7 +55,7 @@ async function requestEdgeLLM(input: string, { signal }: SupabaseFunctionOptions
   })
 
   if (!response.ok) {
-    throw new Error(`edge_function_error_${response.status}`)
+    throw new Error(`vercel_api_error_${response.status}`)
   }
 
   const payload = (await response.json()) as Partial<LlmResponse>
@@ -93,7 +72,7 @@ async function requestEdgeLLM(input: string, { signal }: SupabaseFunctionOptions
   ) {
     return {
       ...FALLBACK_RESPONSE,
-      reasonCode: 'invalid_edge_payload',
+      reasonCode: 'invalid_api_payload',
     }
   }
 
@@ -124,11 +103,7 @@ export function useLLM() {
     if (safetyResult.blocked) {
       return {
         reply: safetyResult.reply,
-        effects: {
-          kpiDelta: -8,
-          shieldDelta: -8,
-          mentalDelta: -8,
-        },
+        effects: { kpiDelta: -8, shieldDelta: -8, mentalDelta: -8 },
         verdict: 'block',
         reasonCode: safetyResult.reasonCode,
       }
@@ -141,16 +116,11 @@ export function useLLM() {
     setIsLoading(true)
     setIsSlow(false)
 
-    const slowTimer = window.setTimeout(() => {
-      setIsSlow(true)
-    }, 3000)
-
-    const hardTimeout = window.setTimeout(() => {
-      controller.abort()
-    }, 15000)
+    const slowTimer = window.setTimeout(() => { setIsSlow(true) }, 3000)
+    const hardTimeout = window.setTimeout(() => { controller.abort() }, 30000)
 
     try {
-      const response = await requestEdgeLLM(input, { signal: controller.signal })
+      const response = await requestVercelLLM(input, controller.signal)
       return response
     } catch (error) {
       return {
@@ -172,10 +142,5 @@ export function useLLM() {
     abortControllerRef.current?.abort()
   }, [])
 
-  return {
-    requestLLM,
-    abortRequest,
-    isLoading,
-    isSlow,
-  }
+  return { requestLLM, abortRequest, isLoading, isSlow }
 }
