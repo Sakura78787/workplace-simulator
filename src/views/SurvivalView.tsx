@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import type { Variants } from 'framer-motion'
+import { ChevronLeft } from 'lucide-react'
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { DecisionArea } from '../components/game/DecisionArea'
@@ -64,7 +65,7 @@ export function SurvivalView() {
    * 从事件流中提取最近一条 NPC 文案。
    * 若暂无 NPC 记录，则回退为剧情开场白；开场白缺失时再回退主题文案。
    */
-  const latestNpcMessage = [...eventLog].reverse().find((item) => item.role === 'npc')?.content
+    const latestNpcMessage = eventLog.slice(-2).find((item) => item.role === 'npc')?.content
   const fallbackStoryText = currentNode.npcDialogue?.trim() || `当前议题：${currentNode.theme}`
   const storyText = latestNpcMessage ?? fallbackStoryText
   const slowLoadingHint =
@@ -98,13 +99,20 @@ export function SurvivalView() {
       at: Date.now(),
     })
     submitDecision(llmResult.effects)
-  }
 
   useEffect(() => {
     if (status === 'dead' && reviveUsed) {
       const timer = window.setTimeout(() => {
         navigate('/result')
       }, 3000)
+
+      return () => window.clearTimeout(timer)
+    }
+
+    if (status === 'cleared') {
+      const timer = window.setTimeout(() => {
+        navigate('/result')
+      }, 2000)
 
       return () => window.clearTimeout(timer)
     }
@@ -126,6 +134,19 @@ export function SurvivalView() {
       initial="hidden"
       animate="visible"
     >
+      <button
+        type="button"
+        className="absolute top-4 left-4 z-50 flex items-center gap-1 rounded-full bg-white/70 px-3 py-1.5 text-xs text-text-secondary shadow-sm backdrop-blur-sm"
+        onClick={() => {
+          if (window.confirm('确诊单还没拿，确定要退出并丢失当前进度吗？')) {
+            useGameStore.getState().resetForTest()
+            navigate('/')
+          }
+        }}
+      >
+        <ChevronLeft size={14} />
+        退出
+      </button>
       <div className="pointer-events-none absolute inset-0 -z-10">
         <motion.div
           className="absolute -left-20 top-20 h-64 w-64 rounded-full bg-sunset/10 blur-3xl"

@@ -168,7 +168,7 @@ export function LandingView() {
   return (
     <>
       <motion.section
-        className="relative flex h-full flex-col justify-between gap-6 overflow-hidden px-6 py-8"
+        className="relative flex min-h-[100dvh] flex-col justify-between gap-6 overflow-y-auto overflow-x-hidden px-6 pb-12 pt-8"
         variants={containerVariants}
         initial="hidden"
         animate="visible"

@@ -281,6 +281,8 @@ async function requestModel(systemPrompt: string, userInput: string): Promise<Ll
     })
 
     if (!upstreamResponse.ok) {
+      const errorText = await upstreamResponse.text()
+      console.error('【大模型报错回传】:', errorText)
       return {
         ...fallbackResponse,
         reasonCode: `upstream_http_${upstreamResponse.status}`,
@@ -331,6 +333,8 @@ Deno.serve(async (request) => {
     const body = (await request.json()) as ChatCompletionRequest
     const input = typeof body.input === 'string' ? body.input : ''
     const context = body.context ?? {}
+
+    console.log('【请求Payload】', JSON.stringify({ input, context }))
 
     const firstLayerBlocked = runFirstLayerFilter(input)
     if (firstLayerBlocked) {

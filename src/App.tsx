@@ -59,7 +59,7 @@ function App() {
   }, [])
 
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden bg-cream px-4 py-0">
+    <div className="relative min-h-[100dvh] overflow-y-auto overflow-x-hidden bg-cream px-4 py-0">
       <BlobBackground />
       <Meteors />
       <ToastViewport />

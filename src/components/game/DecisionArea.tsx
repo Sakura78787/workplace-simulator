@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
 import { SPRING_STIFF } from '../../config/motion'
 import type { StoryOption } from '../../config/storyNodes'
@@ -77,41 +77,42 @@ export function DecisionArea({
       style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom, 0px))' }}
     >
       <div className="relative flex flex-col gap-3 rounded-[28px] border border-white/45 bg-white/50 p-3 shadow-[0_12px_24px_rgba(45,45,45,0.1)] backdrop-blur-xl">
-        <motion.div
-          className="flex flex-nowrap gap-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-          initial={false}
-          animate={{
-            opacity: hideQuickChips ? 0.2 : 1,
-            y: hideQuickChips ? 12 : 0,
-            pointerEvents: hideQuickChips ? 'none' : 'auto',
-          }}
-          transition={{ type: 'spring', stiffness: 360, damping: 28 }}
-        >
-          {options.map((option) => (
-            <motion.button
-              key={option.id}
-              type="button"
-              className={[
-                'shrink-0 rounded-full px-4 py-2 text-xs text-left leading-relaxed shadow-sm',
-                isInteractionLocked ? 'bg-text-secondary/20 text-text-secondary' : 'bg-white/80 text-text-primary border border-white',
-              ].join(' ')}
-              onPointerDown={() => handlePointerDown(option)}
-              onPointerUp={() => {
-                void handlePointerUp(option)
-              }}
-              onPointerCancel={clearLongPressTimer}
-              onPointerLeave={clearLongPressTimer}
-              onClick={(event) => {
-                event.preventDefault()
-              }}
-              disabled={isInteractionLocked}
-              whileTap={isInteractionLocked ? undefined : { scale: 0.92 }}
-              transition={SPRING_STIFF}
+        <AnimatePresence initial={false}>
+          {!hideQuickChips && (
+            <motion.div
+              className="flex flex-nowrap gap-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+              initial={{ height: 'auto', opacity: 1 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0, overflow: 'hidden', marginTop: 0 }}
+              transition={{ type: 'spring', stiffness: 360, damping: 28 }}
             >
-              {option.text}
-            </motion.button>
-          ))}
-        </motion.div>
+              {options.filter((_, idx) => idx === 0 || idx === 2).map((option) => (
+                <motion.button
+                  key={option.id}
+                  type="button"
+                  className={[
+                    'shrink-0 rounded-full px-4 py-2 text-xs text-left leading-relaxed shadow-sm',
+                    isInteractionLocked ? 'bg-text-secondary/20 text-text-secondary' : 'bg-white/80 text-text-primary border border-white',
+                  ].join(' ')}
+                  onPointerDown={() => handlePointerDown(option)}
+                  onPointerUp={() => {
+                    void handlePointerUp(option)
+                  }}
+                  onPointerCancel={clearLongPressTimer}
+                  onPointerLeave={clearLongPressTimer}
+                  onClick={(event) => {
+                    event.preventDefault()
+                  }}
+                  disabled={isInteractionLocked}
+                  whileTap={isInteractionLocked ? undefined : { scale: 0.92 }}
+                  transition={SPRING_STIFF}
+                >
+                  {option.text}
+                </motion.button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="flex items-center gap-2 rounded-full border border-white/60 bg-white/65 p-1">
           <input

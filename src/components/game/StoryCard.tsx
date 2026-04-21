@@ -254,9 +254,9 @@ export function StoryCard({
           />
         ) : null}
       </p>
-      <div className="mt-6 flex items-center justify-between text-xs text-text-secondary">
-        <span>左滑：{leftOption.text}</span>
-        <span>右滑：{rightOption.text}</span>
+      <div className="mt-6 flex items-stretch justify-between gap-4 text-xs text-text-secondary">
+        <span className="flex-1 rounded-md bg-gray-100 p-2 text-center">⇠ 左滑：{leftOption.text}</span>
+        <span className="flex-1 rounded-md bg-gray-100 p-2 text-center">右滑：{rightOption.text} ⇢</span>
       </div>
     </motion.div>
   )

@@ -1,4 +1,5 @@
 import html2canvas from 'html2canvas'
+import { ChevronLeft } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer } from 'recharts'
@@ -155,6 +156,12 @@ export function ResultView() {
     ensureDeviceId()
   }, [ensureDeviceId])
 
+  useEffect(() => {
+    if (!status || (status !== 'dead' && status !== 'cleared')) {
+      navigate('/', { replace: true })
+    }
+  }, [status, navigate])
+
   const shareSaveCtaLabel = useMemo(() => {
     const variant = resolveAbShareVariant(deviceId)
     return variant === 'self_mock' ? SPEC_SHARE_SAVE_CTA_SELF_MOCK : SPEC_SHARE_SAVE_CTA_PK_TAUNT
@@ -167,9 +174,10 @@ export function ResultView() {
   }, [eventLog])
 
   const normalizedStatus = status === 'dead' ? 'dead' : 'cleared'
+  const safeStats = { kpi: stats?.kpi ?? 0, shield: stats?.shield ?? 0, mental: stats?.mental ?? 0 }
   const summary = useMemo(
-    () => buildResultSummary(normalizedStatus, stats, fatalQuote, pendingHiddenEnding ?? undefined),
-    [normalizedStatus, stats, fatalQuote, pendingHiddenEnding],
+    () => buildResultSummary(normalizedStatus, safeStats, fatalQuote, pendingHiddenEnding ?? undefined),
+    [normalizedStatus, safeStats, fatalQuote, pendingHiddenEnding],
   )
 
   useEffect(() => {
@@ -178,7 +186,7 @@ export function ResultView() {
 
       addGameResult({
         resultType: summary.resultType,
-        finalStats: { ...stats },
+        finalStats: { ...safeStats },
         achievedTitle: summary.achievedTitle,
         fatalQuote: summary.fatalQuote,
         heatPercentage: summary.heatPercentage,
@@ -194,14 +202,14 @@ export function ResultView() {
           resultType: summary.resultType,
           achievedTitle: summary.achievedTitle,
           heatPercentage: summary.heatPercentage,
-          kpi: stats.kpi,
-          shield: stats.shield,
-          mental: stats.mental,
-          roundsSurvived: currentRound,
+          kpi: safeStats.kpi,
+          shield: safeStats.shield,
+          mental: safeStats.mental,
+          roundsSurvived: currentRound ?? 1,
         })
       }
     }
-  }, [summary, stats, addGameResult, currentRound])
+  }, [summary, safeStats, addGameResult, currentRound])
 
   /**
    * 记录分享/保存按钮点击（~1s 防抖；每次有效点击各写一行 INSERT）。
@@ -252,8 +260,21 @@ export function ResultView() {
       className="relative flex h-full flex-col overflow-y-auto px-5 pt-6"
       style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom, 0px))' }}
     >
+      <button
+        type="button"
+        className="absolute top-4 left-4 z-50 flex items-center gap-1 rounded-full bg-white/70 px-3 py-1.5 text-xs text-text-secondary shadow-sm backdrop-blur-sm"
+        onClick={() => {
+          if (window.confirm('确定要退出并返回首页吗？')) {
+            useGameStore.getState().resetForTest()
+            navigate('/')
+          }
+        }}
+      >
+        <ChevronLeft size={14} />
+        返回
+      </button>
       <div className="mx-auto w-full max-w-[360px]">
-        <ReceiptPoster summary={summary} stats={stats} qrTarget={deployHomeUrl} compact />
+        <ReceiptPoster summary={summary} stats={safeStats} qrTarget={deployHomeUrl} compact />
       </div>
 
       <div className="mt-6 grid gap-3">
@@ -276,7 +297,7 @@ export function ResultView() {
             boxSizing: 'border-box',
           }}
         >
-          <ReceiptPoster summary={summary} stats={stats} qrTarget={deployHomeUrl} />
+          <ReceiptPoster summary={summary} stats={safeStats} qrTarget={deployHomeUrl} />
         </div>
       </div>
     </section>
