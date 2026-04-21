@@ -99,6 +99,7 @@ export function SurvivalView() {
       at: Date.now(),
     })
     submitDecision(llmResult.effects)
+  }
 
   useEffect(() => {
     if (status === 'dead' && reviveUsed) {
