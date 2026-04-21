@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type { EventEffects, RoleType } from '../config/storyNodes'
-import { getScenarioTotalRounds, pickRandomScenario } from '../config/storyNodes'
+import { pickRandomScenario } from '../config/storyNodes'
 import { clamp } from '../utils/clamp'
 
 export type GameStatus = 'onboarding' | 'playing' | 'dead' | 'cleared'
