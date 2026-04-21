@@ -195,7 +195,8 @@ function extractJsonString(raw: string): string {
     return fencedMatch[1].trim()
   }
 
-  const objectMatch = raw.match(/\{[\s\S]*\}/)
+  const stripped = raw.replace(/`{1,2}json?\s*/gi, '').replace(/`{1,2}/g, '').trim()
+  const objectMatch = stripped.match(/\{[\s\S]*\}/)
   return objectMatch ? objectMatch[0] : raw
 }
 
@@ -262,8 +263,15 @@ async function requestModel(systemPrompt: string, userInput: string): Promise<Ll
   const timeoutController = new AbortController()
   const timeoutId = setTimeout(() => timeoutController.abort('edge_timeout'), 14000)
 
+  let requestUrl = endpoint.replace(/\/+$/, '')
+  if (!requestUrl.includes('/chat/completions')) {
+    requestUrl = `${requestUrl}/chat/completions`
+  }
+
+  console.log('【请求URL】', requestUrl)
+
   try {
-    const upstreamResponse = await fetch(endpoint, {
+    const upstreamResponse = await fetch(requestUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -282,7 +290,7 @@ async function requestModel(systemPrompt: string, userInput: string): Promise<Ll
 
     if (!upstreamResponse.ok) {
       const errorText = await upstreamResponse.text()
-      console.error('【大模型报错回传】:', errorText)
+      console.error(`【大模型报错回传】 HTTP ${upstreamResponse.status}:`, errorText)
       return {
         ...fallbackResponse,
         reasonCode: `upstream_http_${upstreamResponse.status}`,
@@ -301,7 +309,13 @@ async function requestModel(systemPrompt: string, userInput: string): Promise<Ll
     }
 
     const jsonText = extractJsonString(content)
-    const parsedResult = JSON.parse(jsonText) as unknown
+    let parsedResult: unknown
+    try {
+      parsedResult = JSON.parse(jsonText)
+    } catch {
+      console.error('【JSON解析失败，原文】:', jsonText)
+      return { ...fallbackResponse, reasonCode: 'json_parse_error' }
+    }
     return normalizeAndReviewModelResult(parsedResult)
   } catch (error) {
     const isTimeoutAbort = error instanceof DOMException && error.name === 'AbortError'
