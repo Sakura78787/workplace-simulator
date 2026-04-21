@@ -36,3 +36,4 @@ spec-supplement.md
 .cursor/
 .vercel
 .supabase
+tavily_result*.txt
