@@ -4,6 +4,7 @@ import { CapsuleButton } from './common/CapsuleButton'
 type ResumePromptModalProps = {
   open: boolean
   currentRound: number
+  totalRounds: number
   onContinue: () => void
   onRestart: () => void
   onClose: () => void
@@ -12,7 +13,7 @@ type ResumePromptModalProps = {
 /**
  * PRD 对齐：检测到残局时，先弹窗分流“继续收拾”或“重新入职”。
  */
-export function ResumePromptModal({ open, currentRound, onContinue, onRestart, onClose }: ResumePromptModalProps) {
+export function ResumePromptModal({ open, currentRound, totalRounds, onContinue, onRestart, onClose }: ResumePromptModalProps) {
   return (
     <AnimatePresence>
       {open ? (
@@ -31,7 +32,7 @@ export function ResumePromptModal({ open, currentRound, onContinue, onRestart, o
           >
             <h2 className="text-center font-heading text-2xl text-text-primary">检测到未完成烂摊子</h2>
             <p className="mt-2 text-center text-sm text-text-secondary">
-              你上次还在第 {currentRound} 回合和老板对线，要继续收拾，还是直接重新入职？
+              你上次还在第 {currentRound}/{totalRounds} 回合和老板对线，要继续收拾，还是直接重新入职？
             </p>
 
             <div className="mt-5 grid gap-3">

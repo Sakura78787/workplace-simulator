@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type { EventEffects, RoleType } from '../config/storyNodes'
+import { getScenarioTotalRounds, pickRandomScenario } from '../config/storyNodes'
 import { clamp } from '../utils/clamp'
 
 export type GameStatus = 'onboarding' | 'playing' | 'dead' | 'cleared'
@@ -47,7 +48,9 @@ export type HiddenEndingMeta = {
 
 const initialState = {
   status: 'onboarding' as GameStatus,
-  currentRound: 1 as 1 | 2 | 3 | 4 | 5,
+  currentRound: 1 as number,
+  currentScenarioId: null as string | null,
+  totalRounds: 5 as number,
   stats: {
     kpi: 50,
     shield: 50,
@@ -62,7 +65,9 @@ const initialState = {
 
 type GameStoreState = {
   status: GameStatus
-  currentRound: 1 | 2 | 3 | 4 | 5
+  currentRound: number
+  currentScenarioId: string | null
+  totalRounds: number
   stats: {
     kpi: number
     shield: number
@@ -122,16 +127,23 @@ export const useGameStore = create<GameStoreState>()(
           agreedDisclaimer: agreed,
         }),
       startNewGame: () =>
-        set((state) => ({
-          ...initialState,
-          deviceId: state.deviceId,
-          isTyping: false,
-          currentRole: state.currentRole,
-          agreedDisclaimer: state.agreedDisclaimer,
-          historyPokedex: state.historyPokedex,
-          pendingHiddenEnding: null,
-          status: 'playing',
-        })),
+        set((state) => {
+          const role = state.currentRole ?? 'PM'
+          const scenario = pickRandomScenario(role)
+          const totalRounds = scenario.nodes.length
+          return {
+            ...initialState,
+            deviceId: state.deviceId,
+            isTyping: false,
+            currentRole: state.currentRole,
+            agreedDisclaimer: state.agreedDisclaimer,
+            historyPokedex: state.historyPokedex,
+            pendingHiddenEnding: null,
+            status: 'playing',
+            currentScenarioId: scenario.id,
+            totalRounds,
+          }
+        }),
       resumeGame: () =>
         set({
           isTyping: false,
@@ -205,11 +217,11 @@ export const useGameStore = create<GameStoreState>()(
             }
           }
 
-          const isFinalRound = state.currentRound >= 5
+          const isFinalRound = state.currentRound >= state.totalRounds
           return {
             lastRoundSnapshot: snapshot,
             stats: nextStats,
-            currentRound: isFinalRound ? state.currentRound : ((state.currentRound + 1) as 1 | 2 | 3 | 4 | 5),
+            currentRound: isFinalRound ? state.currentRound : state.currentRound + 1,
             status: isFinalRound ? ('cleared' as GameStatus) : ('playing' as GameStatus),
             isTyping: false,
             eventLog: [
@@ -228,7 +240,7 @@ export const useGameStore = create<GameStoreState>()(
             return {}
           }
 
-          if (state.currentRound >= 5) {
+          if (state.currentRound >= state.totalRounds) {
             return {
               status: 'cleared' as GameStatus,
               isTyping: false,
@@ -236,7 +248,7 @@ export const useGameStore = create<GameStoreState>()(
           }
 
           return {
-            currentRound: (state.currentRound + 1) as 1 | 2 | 3 | 4 | 5,
+            currentRound: state.currentRound + 1,
             status: 'playing' as GameStatus,
             isTyping: false,
           }
@@ -249,7 +261,7 @@ export const useGameStore = create<GameStoreState>()(
 
           return {
             status: 'playing' as GameStatus,
-            currentRound: state.lastRoundSnapshot.round as 1 | 2 | 3 | 4 | 5,
+            currentRound: state.lastRoundSnapshot.round,
             stats: {
               ...state.lastRoundSnapshot.stats,
             },
@@ -298,6 +310,8 @@ export const useGameStore = create<GameStoreState>()(
       partialize: (state) => ({
         status: state.status,
         currentRound: state.currentRound,
+        currentScenarioId: state.currentScenarioId,
+        totalRounds: state.totalRounds,
         stats: state.stats,
         eventLog: state.eventLog,
         reviveUsed: state.reviveUsed,

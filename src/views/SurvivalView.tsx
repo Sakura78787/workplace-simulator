@@ -52,6 +52,8 @@ export function SurvivalView() {
   const eventLog = useGameStore((state) => state.eventLog)
   const reviveUsed = useGameStore((state) => state.reviveUsed)
   const isTyping = useGameStore((state) => state.isTyping)
+  const currentScenarioId = useGameStore((state) => state.currentScenarioId)
+  const totalRounds = useGameStore((state) => state.totalRounds)
   const submitDecision = useGameStore((state) => state.submitDecision)
   const useRevive = useGameStore((state) => state.useRevive)
   const setTypingState = useGameStore((state) => state.setTypingState)
@@ -59,7 +61,7 @@ export function SurvivalView() {
   const setPendingHiddenEnding = useGameStore((state) => state.setPendingHiddenEnding)
   const { requestLLM, isLoading, isSlow } = useLLM()
 
-  const roleNodes = getStoryNodesForRole(currentRole)
+  const roleNodes = getStoryNodesForRole(currentRole, currentScenarioId)
   const currentNode = roleNodes[(currentRound - 1) % roleNodes.length]
   /**
    * 从事件流中提取最近一条 NPC 文案。
@@ -170,7 +172,7 @@ export function SurvivalView() {
           className="mb-4 flex items-center justify-between rounded-full border border-white/45 bg-white/45 px-3 py-1.5 text-sm text-text-secondary backdrop-blur-xl"
           variants={itemVariants}
         >
-          <span>第 {currentRound} 回合 · {currentNode.theme}</span>
+          <span>第 {currentRound}/{totalRounds} 回合 · {currentNode.theme}</span>
           <span>状态：{statusTextMap[status]}</span>
         </motion.div>
 

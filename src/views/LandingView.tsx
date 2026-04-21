@@ -103,6 +103,7 @@ export function LandingView() {
   const triggerToast = useToastTrigger()
   const currentRole = useGameStore((state) => state.currentRole)
   const currentRound = useGameStore((state) => state.currentRound)
+  const totalRounds = useGameStore((state) => state.totalRounds)
   const agreedDisclaimer = useGameStore((state) => state.agreedDisclaimer)
   const status = useGameStore((state) => state.status)
   const historyPokedex = useGameStore((state) => state.historyPokedex)
@@ -260,6 +261,7 @@ export function LandingView() {
       <ResumePromptModal
         open={isResumePromptOpen}
         currentRound={currentRound}
+        totalRounds={totalRounds}
         onContinue={handleResumeGame}
         onRestart={handleRestartFromPrompt}
         onClose={() => {

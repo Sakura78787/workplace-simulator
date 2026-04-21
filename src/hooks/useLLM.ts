@@ -35,7 +35,8 @@ const FALLBACK_RESPONSE: LlmResponse = {
 async function requestVercelLLM(input: string, signal: AbortSignal): Promise<LlmResponse> {
   const state = useGameStore.getState()
   const role = state.currentRole ?? defaultRole
-  const roleNodes = getStoryNodesForRole(role)
+  const currentScenarioId = state.currentScenarioId
+  const roleNodes = getStoryNodesForRole(role, currentScenarioId)
   const currentNode = roleNodes[(state.currentRound - 1) % roleNodes.length]
 
   const response = await fetch('/api/chat-completion', {
@@ -47,6 +48,7 @@ async function requestVercelLLM(input: string, signal: AbortSignal): Promise<Llm
       context: {
         role,
         currentRound: state.currentRound,
+        totalRounds: state.totalRounds,
         theme: currentNode.theme,
         npcDialogue: currentNode.npcDialogue,
         stats: state.stats,
